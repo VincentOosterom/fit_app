@@ -1,0 +1,111 @@
+.page {
+  padding: 0.5rem 0;
+}
+
+.page h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.75rem;
+}
+
+.intro {
+  color: var(--muted);
+  margin: 0 0 1.5rem;
+}
+
+.error {
+  color: #f87171;
+  margin-bottom: 1rem;
+}
+
+.success {
+  color: var(--success);
+  margin-bottom: 1rem;
+}
+
+.readOnlyBanner {
+  padding: 0.75rem 1rem;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.input:disabled,
+.input[readonly] {
+  opacity: 0.85;
+  cursor: not-allowed;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.form {
+  max-width: 480px;
+}
+
+.section {
+  margin-bottom: 1.5rem;
+}
+
+.section h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.input {
+  padding: 0.6rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.check {
+  flex-direction: row;
+  align-items: center;
+}
+
+.check input {
+  margin-right: 0.5rem;
+}
+
+.checkRow {
+  margin-bottom: 0.5rem;
+}
+
+.button {
+  padding: 0.75rem 1.25rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

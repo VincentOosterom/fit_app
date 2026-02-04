@@ -1,0 +1,135 @@
+.page {
+  padding: 0.5rem 0;
+}
+
+.back {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+
+.back a {
+  color: var(--muted);
+}
+
+.page h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.75rem;
+}
+
+.intro {
+  color: var(--text-soft);
+  margin: 0 0 1.5rem;
+  max-width: 560px;
+}
+
+.success {
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+
+.error {
+  color: #f87171;
+  margin-bottom: 1rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.card {
+  position: relative;
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.cardActive {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.badge {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+}
+
+.card h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.price {
+  margin: 0 0 1rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.price span {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.features {
+  margin: 0 0 1.25rem;
+  padding-left: 1.15rem;
+  font-size: 0.9rem;
+  color: var(--text-soft);
+  line-height: 1.7;
+}
+
+.features li {
+  margin-bottom: 0.35rem;
+}
+
+.button {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--accent);
+  color: var(--accent-text);
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.buttonCurrent {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--surface-alt);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-weight: 600;
+  cursor: default;
+  font-size: 0.95rem;
+}
+
+.button:disabled,
+.buttonCurrent:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

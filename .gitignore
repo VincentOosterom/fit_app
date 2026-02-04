@@ -1,0 +1,14 @@
+# Dependencies
+node_modules
+
+# Build
+dist
+
+# Environment (bevat geheimen – nooit committen)
+.env
+.env.local
+.env.*.local
+
+# Editor / OS
+.DS_Store
+*.log

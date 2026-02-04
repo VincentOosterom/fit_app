@@ -1,0 +1,59 @@
+/* TrainLogic – donker, lime accent, strak (URBIFIT-style) */
+:root {
+  --bg: #1a1a1a;
+  --surface: #242424;
+  --surface-alt: #2a2a2a;
+  --border: #3a3a3a;
+  --text: #ffffff;
+  --text-soft: #b0b0b0;
+  --muted: #888;
+  --accent: #b8ff00;
+  --accent-hover: #9ee600;
+  --accent-soft: rgba(184, 255, 0, 0.12);
+  --accent-text: #1a1a1a;
+  --success: #b8ff00;
+  --radius: 6px;
+  --font: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-heading: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.loading {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  color: var(--muted);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  cursor: pointer;
+  font: inherit;
+  font-family: var(--font);
+}
+
+input, select, textarea {
+  font: inherit;
+  font-family: var(--font);
+}

@@ -1,0 +1,66 @@
+.wrap {
+  margin-top: 1rem;
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.form .input {
+  padding: 0.6rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+}
+
+.form h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0 0 1rem;
+}
+
+.button {
+  padding: 0.65rem 1.25rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.buttonSecondary {
+  padding: 0.65rem 1.25rem;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-left: 0.5rem;
+}
+
+.followUpTitle {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.followUpButtons {
+  margin-bottom: 0.5rem;
+}
+
+.done {
+  color: var(--success);
+  margin: 0;
+}
