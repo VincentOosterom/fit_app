@@ -6,7 +6,8 @@ import { useSubscription } from '../hooks/useSubscription'
 import { hasFeature, getUpgradeMessage } from '../lib/planFeatures'
 import WeekReviewForm from './WeekReviewForm'
 import { getWeekEvaluationAvailability, formatAvailableDate } from '../utils/weekEvaluation'
-import { getMealOptions, MEAL_SLOTS } from '../rules/nutritionEngine'
+import { getMealOptions as getMealOptionsStatic, MEAL_SLOTS, buildNextNutritionWeek } from '../rules/nutritionEngine'
+import { useFoodLibrary } from '../hooks/useFoodLibrary'
 import { getShoppingListForMeals } from '../lib/foodLibrary'
 import styles from './Plan.module.css'
 
@@ -19,9 +20,15 @@ export default function NutritionPlanWeek() {
   const weekNumber = Math.max(1, Math.min(4, parseInt(weekNum, 10) || 1))
   const [row, setRow] = useState(null)
   const [reviews, setReviews] = useState([])
-  const [overrides, setOverrides] = useState({})
+  const [clientInput, setClientInput] = useState(null)
+  const [overridesByDay, setOverridesByDay] = useState({}) // { [dayNumber]: { [mealSlot]: optionIndex } }
+  const [selectedDay, setSelectedDay] = useState(1)
   const [loading, setLoading] = useState(true)
   const canBoodschappen = hasFeature(planType, 'boodschappenlijst')
+  const showSevenDays = hasFeature(planType, 'example_meals_macros')
+  const { getMealOptions: getMealOptionsFromDb, loading: foodLibraryLoading } = useFoodLibrary()
+  const getMealOptions = (energyLevel, mealSlot) =>
+    (foodLibraryLoading ? getMealOptionsStatic : getMealOptionsFromDb)(energyLevel, mealSlot, clientInput)
 
   useEffect(() => {
     if (!id || !user?.id) {
@@ -37,15 +44,21 @@ export default function NutritionPlanWeek() {
         const { data: r } = await supabase.from('week_reviews').select('*').eq('user_id', user.id).eq('block_id', planData.block_id)
         if (!cancelled) setReviews(r ?? [])
       }
+      const { data: inputData } = await supabase.from('client_input').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(1).maybeSingle()
+      if (!cancelled) setClientInput(inputData ?? null)
       const { data: overrideRows } = await supabase
         .from('meal_overrides')
-        .select('meal_slot, option_index')
+        .select('meal_slot, day_number, option_index')
         .eq('nutrition_plan_id', id)
         .eq('week_number', weekNumber)
       if (!cancelled && overrideRows) {
-        const map = {}
-        overrideRows.forEach((o) => { map[o.meal_slot] = o.option_index })
-        setOverrides(map)
+        const byDay = {}
+        overrideRows.forEach((o) => {
+          const d = o.day_number ?? 1
+            if (!byDay[d]) byDay[d] = {}
+            byDay[d][o.meal_slot] = o.option_index
+        })
+        setOverridesByDay(byDay)
       }
       setLoading(false)
     }
@@ -58,32 +71,63 @@ export default function NutritionPlanWeek() {
   const existingReview = reviews.find((r) => r.week_number === weekNumber)
   const { available: evaluationAvailable, availableFrom } = getWeekEvaluationAvailability(row?.created_at, weekNumber)
 
+  const handleReviewSubmitted = async () => {
+    if (!id || !user?.id || !row?.block_id || weekNumber > 3) return
+    try {
+      const { data: planRow } = await supabase.from('nutrition_plans').select('plan').eq('id', id).eq('user_id', user.id).single()
+      const plan = planRow?.plan
+      if (!plan?.weeks || plan.weeks.length !== weekNumber) return
+      const { data: inputRow } = await supabase.from('client_input').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(1).maybeSingle()
+      const input = inputRow ?? {}
+      const { data: blockReviews } = await supabase.from('week_reviews').select('*').eq('user_id', user.id).eq('block_id', row.block_id).order('week_number')
+      const previousReview = blockReviews?.find((r) => r.week_number === weekNumber) ?? null
+      const previousWeek = plan.weeks[weekNumber - 1]
+      const nextWeek = buildNextNutritionWeek(plan, input, previousWeek, previousReview, weekNumber)
+      const updatedPlan = { ...plan, weeks: [...plan.weeks, nextWeek] }
+      await supabase.from('nutrition_plans').update({ plan: updatedPlan }).eq('id', id).eq('user_id', user.id)
+      setRow((r) => (r ? { ...r, plan: updatedPlan } : r))
+    } catch (_) {}
+  }
+
+  const dayNumber = showSevenDays ? selectedDay : 1
+  const overridesForDay = overridesByDay[dayNumber] ?? {}
+
   const handleSwapMeal = async (mealSlot) => {
     if (!user?.id || !id || !week) return
     const options = getMealOptions(week.energyDirection, mealSlot)
     if (options.length <= 1) return
-    const current = overrides[mealSlot] ?? 0
+    const current = overridesForDay[mealSlot] ?? 0
     const next = (current + 1) % options.length
     const { error } = await supabase.from('meal_overrides').upsert(
-      { user_id: user.id, nutrition_plan_id: id, week_number: weekNumber, meal_slot: mealSlot, option_index: next },
-      { onConflict: 'user_id,nutrition_plan_id,week_number,meal_slot' }
+      { user_id: user.id, nutrition_plan_id: id, week_number: weekNumber, day_number: dayNumber, meal_slot: mealSlot, option_index: next },
+      { onConflict: 'user_id,nutrition_plan_id,week_number,day_number,meal_slot' }
     )
-    if (!error) setOverrides((o) => ({ ...o, [mealSlot]: next }))
+    if (!error) setOverridesByDay((o) => ({ ...o, [dayNumber]: { ...(o[dayNumber] ?? {}), [mealSlot]: next } }))
   }
 
   if (loading) return <p className={styles.muted}>Laden…</p>
   if (!row || !plan) return <p className={styles.muted}>Schema niet gevonden.</p>
 
-  const displayMeals = week ? MEAL_SLOTS.map((slot) => {
+  const weekDays = showSevenDays && week?.days?.length ? week.days : null
+  const activeDayData = weekDays ? weekDays[dayNumber - 1] : null
+  const baseMealsForDay = activeDayData?.meals ?? week?.exampleMeals ?? []
+
+  const displayMeals = week ? MEAL_SLOTS.map((slot, i) => {
+    const baseMeal = baseMealsForDay[i]
     const options = getMealOptions(week.energyDirection, slot)
-    const idx = overrides[slot] ?? 0
-    const m = options[idx] || options[0]
-    return m ? { slot, meal: MEAL_LABELS[slot], ...m, optionsCount: options.length } : null
+    const idx = overridesForDay[slot] ?? 0
+    const libMeal = options[idx] || options[0]
+    if (!libMeal && !baseMeal) return null
+    const m = libMeal || baseMeal
+    const targetKcal = baseMeal?.kcal ?? m.kcal
+    const scale = targetKcal && m.kcal ? targetKcal / m.kcal : 1
+    const scaled = scale !== 1 ? { ...m, kcal: Math.round(m.kcal * scale), protein: Math.round((m.protein || 0) * scale), carbs: Math.round((m.carbs || 0) * scale), fat: Math.round((m.fat || 0) * scale) } : m
+    return { slot, meal: MEAL_LABELS[slot], ...scaled, optionsCount: options.length }
   }).filter(Boolean) : []
 
   const displayTotal = displayMeals.length
     ? displayMeals.reduce((acc, m) => ({ kcal: acc.kcal + m.kcal, protein: acc.protein + m.protein, carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat }), { kcal: 0, protein: 0, carbs: 0, fat: 0 })
-    : week?.exampleDayTotal
+    : (activeDayData?.dayTotal ?? week?.exampleDayTotal)
 
   const handleDownloadBoodschappen = () => {
     const list = getShoppingListForMeals(displayMeals)
@@ -112,8 +156,21 @@ export default function NutritionPlanWeek() {
       <h1>Week {weekNumber} – Voeding</h1>
       <p className={styles.disclaimer}>Raadpleeg altijd een arts of diëtist voor vragen of bij twijfel over voeding of gezondheid.</p>
 
+      {!week && weekNumber > 1 ? (
+        <p className={styles.muted}>
+          De richtlijnen voor week {weekNumber} worden bepaald na je evaluatie van week {weekNumber - 1}. Vul die eerst in op de vorige week-pagina.
+        </p>
+      ) : null}
       {week ? (
         <>
+          <div className={styles.whyBlock}>
+            <h2 className={styles.whyTitle}>Waarom deze week</h2>
+            <p className={styles.whyText}>
+              {week.rationale || `Deze week hanteren we een ${week.energyDirection === 'hoog' ? 'hoge' : week.energyDirection === 'laag' ? 'lagere' : 'medium'} energie-inname (${week.averageCaloriesPerDay ?? '—'} kcal/dag gemiddeld). Dat sluit aan bij je voedingsdoel.`}
+            </p>
+            {week.weekTip && <p className={styles.whyTip}>{week.weekTip}</p>}
+          </div>
+
           <div className={styles.day}>
             <p><strong>Energie:</strong> {week.energyDirection === 'hoog' ? 'Hoog' : week.energyDirection === 'laag' ? 'Laag' : 'Medium'}</p>
             {week.averageCaloriesPerDay != null && (
@@ -122,16 +179,24 @@ export default function NutritionPlanWeek() {
             {week.macrosPerDay && (
               <p><strong>Macro’s per dag:</strong> Eiwit {week.macrosPerDay.protein}g · Koolhydraten {week.macrosPerDay.carbs}g · Vet {week.macrosPerDay.fat}g</p>
             )}
-            {week.weekTip && <p className={styles.calories}>{week.weekTip}</p>}
           </div>
 
           <div className={styles.day}>
-            <h3>Wat je kunt eten (voorbeelddag)</h3>
+            {showSevenDays && weekDays ? (
+              <div className={styles.dayTabs} role="tablist" aria-label="Kies een dag">
+                {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+                  <button key={d} type="button" role="tab" aria-selected={selectedDay === d} className={selectedDay === d ? styles.dayTabActive : styles.dayTab} onClick={() => setSelectedDay(d)}>
+                    Dag {d}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <h3>{showSevenDays && weekDays ? `Dag ${selectedDay}` : 'Wat je kunt eten (voorbeelddag)'}</h3>
             <p className={styles.calories}>Vind je iets niet lekker? Klik op &quot;Kies iets anders&quot; voor een vergelijkbaar alternatief.</p>
             {canBoodschappen ? (
               <p className={styles.calories}>
                 <button type="button" className={styles.shoppingBtn} onClick={handleDownloadBoodschappen}>
-                  Download boodschappenlijst voor deze week
+                  Download boodschappenlijst {showSevenDays ? `dag ${selectedDay}` : 'deze week'}
                 </button>
               </p>
             ) : (
@@ -152,7 +217,7 @@ export default function NutritionPlanWeek() {
               ))}
             </ul>
             {displayTotal && (
-              <p className={styles.calories}>Totaal voorbeeld: {displayTotal.kcal} kcal · E{displayTotal.protein}g K{displayTotal.carbs}g V{displayTotal.fat}g</p>
+              <p className={styles.calories}>Totaal {showSevenDays ? `dag ${selectedDay}` : 'voorbeeld'}: {displayTotal.kcal} kcal · E{displayTotal.protein}g K{displayTotal.carbs}g V{displayTotal.fat}g</p>
             )}
           </div>
         </>
@@ -165,7 +230,7 @@ export default function NutritionPlanWeek() {
               Evaluatie week {weekNumber} komt beschikbaar op <strong>{formatAvailableDate(availableFrom)}</strong> — na afloop van die week.
             </p>
           ) : (
-            <WeekReviewForm blockId={row.block_id} weekNumber={weekNumber} existingReview={existingReview} />
+            <WeekReviewForm blockId={row.block_id} weekNumber={weekNumber} existingReview={existingReview} onSubmitted={handleReviewSubmitted} />
           )}
         </div>
       )}

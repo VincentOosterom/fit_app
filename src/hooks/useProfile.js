@@ -5,5 +5,5 @@ import { ProfileContext } from '../context/ProfileContext'
 export function useProfile() {
   const context = useContext(ProfileContext)
   if (context) return context
-  return { profile: null, loading: false, isAdmin: false, isBlocked: false }
+  return { profile: null, loading: false, isAdmin: false, isCoach: false, clients: [], isBlocked: false }
 }

@@ -6,18 +6,59 @@ import { useProfile } from '../hooks/useProfile'
 import { useClientInput } from '../hooks/useClientInput'
 import { usePlans } from '../hooks/usePlans'
 import { useSubscription } from '../hooks/useSubscription'
-import { hasFeature, getUpgradeMessage } from '../lib/planFeatures'
+import { useEvents } from '../hooks/useEvents'
+import { hasFeature, getUpgradeMessage, canResetSchema } from '../lib/planFeatures'
 import { buildTrainingPlan } from '../rules/trainingEngine'
 import { buildNutritionPlan } from '../rules/nutritionEngine'
 import { getWelcomeByTime } from '../lib/welcomeTexts'
 import { MOTIVATION_QUOTES } from '../lib/motivationQuotes'
 import { getCurrentWeek } from '../utils/weekEvaluation'
+import ThankYouModal from '../components/ThankYouModal'
 import styles from './Dashboard.module.css'
 
 function formatDate(iso) {
   if (!iso) return '—'
   const d = new Date(iso)
   return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function weeksUntil(dateStr) {
+  const d = new Date(dateStr)
+  d.setHours(0, 0, 0, 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const diff = d - today
+  if (diff < 0) return 0
+  return Math.ceil(diff / (7 * 24 * 60 * 60 * 1000))
+}
+
+const EVENT_TYPE_LABELS = {
+  marathon: 'Marathon',
+  halve_marathon: 'Halve marathon',
+  '10km': '10 km',
+  '5km': '5 km',
+  triathlon: 'Triathlon',
+  hyrox: 'Hyrox',
+  wedstrijd: 'Wedstrijd',
+  sportdag: 'Sportdag',
+  anders: 'Event',
+}
+
+function EventBanner({ event, blockReviews }) {
+  const name = event.event_name?.trim() || EVENT_TYPE_LABELS[event.event_type] || 'Event'
+  const dateFormatted = formatDate(event.event_date)
+  const weeks = weeksUntil(event.event_date)
+  const reviewCount = (blockReviews || []).length
+  const readiness = Math.min(100, 50 + reviewCount * 12)
+
+  return (
+    <Link to="event" className={styles.eventBanner}>
+      <span className={styles.eventBannerTitle}>🏁 {name}</span>
+      <span className={styles.eventBannerDate}>📅 {dateFormatted}</span>
+      <span className={styles.eventBannerWeeks}>⏳ {weeks} {weeks === 1 ? 'week' : 'weken'} te gaan</span>
+      <span className={styles.eventBannerReadiness}>📊 Gereedheid score: {readiness}%</span>
+    </Link>
+  )
 }
 
 function QuoteCarousel() {
@@ -29,14 +70,11 @@ function QuoteCarousel() {
     return () => clearInterval(id)
   }, [])
   return (
-    <div className={styles.quoteCarousel}>
-      <p className={styles.quoteText}>{MOTIVATION_QUOTES[index]}</p>
-      <div className={styles.quoteDots}>
-        {MOTIVATION_QUOTES.map((_, i) => (
-          <span key={i} className={i === index ? styles.quoteDotActive : styles.quoteDot} aria-hidden />
-        ))}
+    <section className={styles.quoteCarousel} aria-label="Inspiratie">
+      <div className={styles.quoteSlideWrap}>
+        <p key={index} className={styles.quoteText}>{MOTIVATION_QUOTES[index]}</p>
       </div>
-    </div>
+    </section>
   )
 }
 
@@ -48,24 +86,21 @@ function ProgressBlock({ planCreatedAt, blockReviews }) {
   return (
     <section className={styles.progressBlock}>
       <h2 className={styles.progressTitle}>Je voortgang</h2>
-      <div className={styles.progressRow}>
-        <span className={styles.progressWeek}>
-          Week {currentWeek ?? 1} van 4
-        </span>
-        <span className={styles.progressReviews}>
-          Evaluaties ingevuld: {count}/4
-        </span>
-      </div>
+      <p className={styles.progressSubtitle}>
+        Week {currentWeek ?? 1} van 4 · {count} van 4 weekevaluaties ingevuld
+      </p>
       <div className={styles.progressBarWrap}>
         <div className={styles.progressBar} style={{ width: `${pct}%` }} />
       </div>
-      <ul className={styles.progressWeeks}>
+      <p className={styles.progressPct}>{pct}% voltooid</p>
+      <div className={styles.progressWeekGrid}>
         {[1, 2, 3, 4].map((w) => (
-          <li key={w} className={reviewedWeeks.includes(w) ? styles.progressWeekDone : styles.progressWeekOpen}>
-            Week {w} {reviewedWeeks.includes(w) ? '✓' : '—'}
-          </li>
+          <div key={w} className={reviewedWeeks.includes(w) ? styles.progressWeekCardDone : styles.progressWeekCard}>
+            <span className={styles.progressWeekNum}>Week {w}</span>
+            {reviewedWeeks.includes(w) ? <span className={styles.progressWeekCheck}>✓ Ingevuld</span> : <span className={styles.progressWeekOpen}>Nog te doen</span>}
+          </div>
         ))}
-      </ul>
+      </div>
     </section>
   )
 }
@@ -74,37 +109,79 @@ export default function Dashboard() {
   const { user } = useAuth()
   const { isAdmin, profile } = useProfile()
   const { input, loading: inputLoading, error } = useClientInput()
-  const { trainingPlan, nutritionPlan, loading: plansLoading, showGenerate, canGenerateAgain, refetch, blockReviews, blockId } = usePlans()
-  const { planType, planName, amountFormatted, nextBillingDate, loading: subLoading } = useSubscription()
+  const { trainingPlan, nutritionPlan, hasAnyPlan, loading: plansLoading, showGenerate, canGenerateAgain, refetch, blockReviews, blockId, onlyNutrition, onlyTraining } = usePlans()
+  const { planType, planName, amountFormatted, nextBillingDate, loading: subLoading, restartCount, refetch: refetchSub } = useSubscription()
+  const { events } = useEvents()
+  const today = new Date().toISOString().slice(0, 10)
+  const nextEvent = (events || []).find((e) => e.event_date >= today)
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState(null)
+  const [resetting, setResetting] = useState(false)
+  const [resetError, setResetError] = useState(null)
+  const [showThankYouModal, setShowThankYouModal] = useState(false)
+  const [generationComplete, setGenerationComplete] = useState(false)
+  const resetInfo = canResetSchema(planType, restartCount)
 
   if (isAdmin) return <Navigate to="/dashboard/admin/accounts" replace />
 
   const handleGenerate = async () => {
     if (!input || !user?.id) return
-    setGenerating(true)
     setGenError(null)
-    const blockId = crypto.randomUUID()
+    setShowThankYouModal(true)
+    setGenerationComplete(false)
+    setGenerating(true)
+    const newBlockId = blockId || crypto.randomUUID()
     try {
-      const trainingData = buildTrainingPlan(input)
-      const nutritionData = buildNutritionPlan(input)
-      const [tRes, nRes] = await Promise.all([
-        supabase.from('training_plans').insert({ user_id: user.id, block_id: blockId, plan: trainingData }).select('id').single(),
-        supabase.from('nutrition_plans').insert({ user_id: user.id, block_id: blockId, plan: nutritionData }).select('id').single(),
-      ])
-      if (tRes.error) throw tRes.error
-      if (nRes.error) throw nRes.error
+      if (onlyNutrition) {
+        const trainingData = buildTrainingPlan(input)
+        const tRes = await supabase.from('training_plans').insert({ user_id: user.id, block_id: nutritionPlan.block_id || newBlockId, plan: trainingData }).select('id').single()
+        if (tRes.error) throw tRes.error
+      } else if (onlyTraining) {
+        const nutritionData = buildNutritionPlan(input)
+        const nRes = await supabase.from('nutrition_plans').insert({ user_id: user.id, block_id: trainingPlan.block_id || newBlockId, plan: nutritionData }).select('id').single()
+        if (nRes.error) throw nRes.error
+      } else {
+        const trainingData = buildTrainingPlan(input)
+        const nutritionData = buildNutritionPlan(input)
+        const [tRes, nRes] = await Promise.all([
+          supabase.from('training_plans').insert({ user_id: user.id, block_id: newBlockId, plan: trainingData }).select('id').single(),
+          supabase.from('nutrition_plans').insert({ user_id: user.id, block_id: newBlockId, plan: nutritionData }).select('id').single(),
+        ])
+        if (tRes.error) throw tRes.error
+        if (nRes.error) throw nRes.error
+      }
       await refetch()
+      setGenerationComplete(true)
     } catch (err) {
       setGenError(err.message || 'Genereren mislukt.')
+      setShowThankYouModal(false)
     } finally {
       setGenerating(false)
     }
   }
 
+  const handleReset = async () => {
+    if (!resetInfo.canReset || !window.confirm('Schema opnieuw beginnen? Je huidige schema en weekevaluaties worden verwijderd. Daarna kun je een nieuw schema genereren.')) return
+    setResetting(true)
+    setResetError(null)
+    try {
+      const { data } = await supabase.rpc('user_reset_schema')
+      if (data?.ok) {
+        await refetch()
+        await refetchSub?.()
+      } else {
+        setResetError(data?.error || 'Reset mislukt.')
+      }
+    } catch (err) {
+      setResetError(err.message || 'Reset mislukt.')
+    } finally {
+      setResetting(false)
+    }
+  }
+
   const loading = inputLoading || plansLoading || subLoading
   const canExportPdf = hasFeature(planType, 'export_pdf')
+  const canUseEvents = hasFeature(planType, 'event_programs')
   const { greeting, followUp } = getWelcomeByTime()
   const displayName = profile?.full_name?.trim() || null
 
@@ -116,6 +193,10 @@ export default function Dashboard() {
         </h1>
         <p className={styles.welcomeFollowUp}>{followUp}</p>
       </section>
+
+      {nextEvent && canUseEvents && (
+        <EventBanner event={nextEvent} blockReviews={blockReviews} />
+      )}
 
       <QuoteCarousel />
 
@@ -150,14 +231,29 @@ export default function Dashboard() {
       {loading && <p className={styles.muted}>Gegevens laden…</p>}
       {error && <p className={styles.error}>{error}</p>}
       {genError && <p className={styles.error}>{genError}</p>}
+      {resetError && <p className={styles.error}>{resetError}</p>}
 
       {showGenerate && input && (
         <div className={styles.generateBlock}>
           <button type="button" onClick={handleGenerate} disabled={generating} className={styles.generateButton}>
-            {generating ? 'Bezig…' : canGenerateAgain ? 'Vervolg schema genereren' : 'Schema genereren (voeding + training)'}
+            {generating ? 'Bezig…' : onlyNutrition ? 'Trainingsschema genereren' : onlyTraining ? 'Voedingsschema genereren' : canGenerateAgain ? 'Vervolg schema genereren' : 'Schema genereren (voeding + training)'}
           </button>
           <p className={styles.muted}>
-            {canGenerateAgain ? 'Je hebt week 4 geëvalueerd. Genereer hier je volgende 4-weekse schema.' : 'Je kunt maar één keer een schema genereren. Na week 4 evaluatie kun je een vervolg schema aanvragen.'}
+            {onlyNutrition && 'Je hebt al een voedingsschema. Genereer hier je trainingsschema op basis van je huidige plan en input.'}
+            {onlyTraining && 'Je hebt al een trainingsschema. Genereer hier je voedingsschema op basis van je huidige plan en input.'}
+            {!onlyNutrition && !onlyTraining && canGenerateAgain && 'Je hebt week 4 geëvalueerd. Genereer hier je volgende 4-weekse schema.'}
+            {!onlyNutrition && !onlyTraining && !canGenerateAgain && 'Op basis van je input genereren we een 4-weekse voeding- en trainingsrichtlijn. Na week 4 kun je een vervolg schema aanvragen.'}
+          </p>
+        </div>
+      )}
+
+      {hasAnyPlan && resetInfo.canReset && input && (
+        <div className={styles.resetBlock}>
+          <button type="button" onClick={handleReset} disabled={resetting} className={styles.resetButton}>
+            {resetting ? 'Bezig…' : 'Schema resetten en opnieuw beginnen'}
+          </button>
+          <p className={styles.muted}>
+            {planType === 'pro' ? 'Je kunt één keer je schema resetten. Bij Premium onbeperkt.' : 'Bij Premium kun je altijd opnieuw beginnen.'}
           </p>
         </div>
       )}
@@ -199,6 +295,10 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {showThankYouModal && (
+        <ThankYouModal onClose={() => setShowThankYouModal(false)} isReady={generationComplete} />
+      )}
     </div>
   )
 }

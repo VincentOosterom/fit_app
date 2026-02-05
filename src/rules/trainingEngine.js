@@ -1,9 +1,12 @@
 /**
- * TrainLogic: 4-weekse trainingsschema.
- * HARD RULES: exact 4 weken, per week focus + volume + intensieve sessies,
- * progressie max 5–10% per week, week 4 deload/stabilisatie.
- * Per week: concrete sessies met voorbeeldoefeningen (zoals voeding exampleMeals).
+ * TrainLogic: rule-based 4-weekse trainingsschema.
+ * - Periodisering: Base/Volume/Intensity/Deload of Taper
+ * - Progressieve overload; week 4 -20 tot -30% volume
+ * - Session split: 1-2 full body, 3-4 upper/lower, 5-6 PPL, 7 rotating
+ * - Oefeningen met metadata (spiergroep, bewegingspatroon, RPE, rust)
  */
+
+import { getSplitType, getWeekVolumeMultipliers, getTrainingWeekRationale, getRPEForPhase, getRestSeconds } from './trainingRules'
 
 /** Voor admin-overzicht: focus per week per doel */
 export const FOCUS_BY_GOAL = {
@@ -113,21 +116,45 @@ const EXERCISES_BY_TYPE = {
     { name: 'Korte duur of lichte kracht', sets: 1, reps: '20-30 min', note: 'Geen zware belasting' },
     { name: 'Mobiliteit en mentale voorbereiding', sets: 1, reps: '10 min', note: '' },
   ],
+  // Split-sessies: verschillende focus per dag
+  upper: [
+    { name: 'Bankdrukken of push-up', sets: 3, reps: '8-12', note: '', alternatives: [{ name: 'Dumbbell chest press', sets: 3, reps: '8-12', note: '' }] },
+    { name: 'Rowing (kabel of dumbbell)', sets: 3, reps: '10-12', note: 'Rug recht', alternatives: [{ name: 'Lat pulldown', sets: 3, reps: '10-12', note: '' }] },
+    { name: 'Overhead press', sets: 3, reps: '8-10', note: '', alternatives: [{ name: 'Dumbbell shoulder press', sets: 3, reps: '8-10', note: '' }] },
+    { name: 'Bicep curls', sets: 2, reps: '10-12', note: '', alternatives: [{ name: 'Hammer curls', sets: 2, reps: '10-12', note: '' }] },
+    { name: 'Plank', sets: 2, reps: '30-45 sec', note: '' },
+  ],
+  lower: [
+    { name: 'Squat (of leg press)', sets: 3, reps: '10-12', note: 'Controleerde uitvoering', alternatives: [{ name: 'Leg press', sets: 3, reps: '10-12', note: '' }] },
+    { name: 'Romanian deadlift of hip hinge', sets: 3, reps: '10-12', note: '', alternatives: [{ name: 'Leg curl', sets: 3, reps: '10-12', note: '' }] },
+    { name: 'Lunges', sets: 2, reps: '10 per been', note: '', alternatives: [{ name: 'Step-up', sets: 2, reps: '10 per been', note: '' }] },
+    { name: 'Calf raises', sets: 2, reps: '12-15', note: '' },
+    { name: 'Core (dead bug of bird dog)', sets: 2, reps: '10 per zijde', note: '' },
+  ],
+  push: [
+    { name: 'Bankdrukken of push-up', sets: 3, reps: '8-12', note: '', alternatives: [{ name: 'Dumbbell chest press', sets: 3, reps: '8-12', note: '' }] },
+    { name: 'Overhead press', sets: 3, reps: '8-10', note: '', alternatives: [{ name: 'Dumbbell shoulder press', sets: 3, reps: '8-10', note: '' }] },
+    { name: 'Tricep oefening (dips of extensie)', sets: 2, reps: '10-12', note: '', alternatives: [{ name: 'Tricep pushdown', sets: 2, reps: '10-12', note: '' }] },
+    { name: 'Plank', sets: 2, reps: '30-45 sec', note: '' },
+  ],
+  pull: [
+    { name: 'Rowing (kabel of dumbbell)', sets: 3, reps: '10-12', note: 'Rug recht', alternatives: [{ name: 'Lat pulldown', sets: 3, reps: '10-12', note: '' }] },
+    { name: 'Lat pulldown of pull-up', sets: 3, reps: '8-12', note: '', alternatives: [{ name: 'Pull-up', sets: 3, reps: 'max', note: '' }] },
+    { name: 'Bicep curls', sets: 2, reps: '10-12', note: '', alternatives: [{ name: 'Hammer curls', sets: 2, reps: '10-12', note: '' }] },
+    { name: 'Face pull (schouders achterkant)', sets: 2, reps: '12-15', note: '' },
+  ],
+  legs: [
+    { name: 'Squat (of leg press)', sets: 3, reps: '10-12', note: 'Controleerde uitvoering', alternatives: [{ name: 'Leg press', sets: 3, reps: '10-12', note: '' }] },
+    { name: 'Romanian deadlift', sets: 3, reps: '10-12', note: '', alternatives: [{ name: 'Leg curl', sets: 3, reps: '10-12', note: '' }] },
+    { name: 'Lunges', sets: 2, reps: '10 per been', note: '', alternatives: [{ name: 'Bulgaarse split squat', sets: 2, reps: '8 per been', note: '' }] },
+    { name: 'Calf raises', sets: 2, reps: '12-15', note: '' },
+  ],
 }
 
 function getBaseVolumeMinutes(input) {
   const days = Math.min(7, Math.max(1, Number(input.days_per_week) || 3))
   const minPerSession = Math.min(180, Math.max(15, Number(input.session_minutes) || 60))
   return days * minPerSession
-}
-
-// Progressie: max 5–10% per week. Week 4 = deload (~70–80% van week 3).
-function getWeekVolumeMultipliers(goal) {
-  const g = ['kracht_endurance', 'sportevenement'].includes(goal) ? 'prestatie' : goal
-  const isDeloadFourth = ['prestatie', 'spieropbouw', 'onderhoud', 'conditie', 'kracht_endurance', 'sportevenement', 'fit_vanaf_nul', 'marathon', 'hyrox'].includes(g)
-  if (isDeloadFourth)
-    return [1.0, 1.07, 1.07, 0.75] // week 4 deload
-  return [1.0, 1.05, 1.05, 1.0]    // week 4 stabilisatie
 }
 
 function getIntenseSessionsPerWeek(input) {
@@ -162,6 +189,11 @@ function getExerciseKeyForFocus(focus, weekIndex, isDeload) {
 export const SESSION_TYPE_LABELS = {
   fullBody: 'Full body kracht',
   fullBodyDeload: 'Full body (licht)',
+  upper: 'Upper body',
+  lower: 'Lower body',
+  push: 'Push (borst, schouders, triceps)',
+  pull: 'Pull (rug, biceps)',
+  legs: 'Benen',
   krachtUithouding: 'Kracht + duur',
   cardioMobiliteit: 'Cardio & mobiliteit',
   metabolisch: 'Metabolische training',
@@ -173,23 +205,52 @@ export const SESSION_TYPE_LABELS = {
   taper: 'Taper / rust',
 }
 
-function buildSessionsForWeek(input, focus, volumeMin, weekIndex) {
+/** Bepaalt per dag welk sessietype (voor split) gebruikt wordt. */
+function getSessionVariantForDay(splitType, dayIndex, daysPerWeek) {
+  if (splitType === 'full_body') {
+    return 'fullBody'
+  }
+  if (splitType === 'upper_lower') {
+    return dayIndex % 2 === 0 ? 'upper' : 'lower'
+  }
+  if (splitType === 'push_pull_legs') {
+    const variant = dayIndex % 3
+    return variant === 0 ? 'push' : variant === 1 ? 'pull' : 'legs'
+  }
+  if (splitType === 'rotating') {
+    const variant = dayIndex % 5
+    return ['push', 'pull', 'legs', 'upper', 'lower'][variant]
+  }
+  return 'fullBody'
+}
+
+/** Of dit focus-type verschillende sessies per dag ondersteunt (split). */
+function focusSupportsSplit(exerciseKey) {
+  return ['fullBody', 'fullBodyDeload', 'volume', 'volumeDeload', 'techniekBasis'].includes(exerciseKey)
+}
+
+function buildSessionsForWeek(input, focus, volumeMin, weekIndex, splitType) {
   const days = Math.min(7, Math.max(1, Number(input.days_per_week) || 3))
-  const sessionMin = Math.min(180, Math.max(15, Number(input.session_minutes) || 60))
   const isDeload = weekIndex === 3 && (focus || '').toLowerCase().includes('deload')
   const exerciseKey = getExerciseKeyForFocus(focus, weekIndex, isDeload)
-  const exercises = EXERCISES_BY_TYPE[exerciseKey] || EXERCISES_BY_TYPE.fullBody
-
-  const sessionTypeLabels = SESSION_TYPE_LABELS
-    const typeLabel = sessionTypeLabels[exerciseKey] || focus
+  const rpe = getRPEForPhase(focus, weekIndex)
+  const useSplit = focusSupportsSplit(exerciseKey)
 
   const sessions = []
   const minPerSession = Math.round(volumeMin / days)
   for (let d = 0; d < days; d++) {
+    const variant = useSplit ? getSessionVariantForDay(splitType, d, days) : exerciseKey
+    const exercises = EXERCISES_BY_TYPE[variant] || EXERCISES_BY_TYPE.fullBody
+    const typeLabel = SESSION_TYPE_LABELS[variant] || SESSION_TYPE_LABELS[exerciseKey] || focus
+    const restSec = getRestSeconds(typeLabel)
+
     sessions.push({
       dayLabel: `Dag ${d + 1}`,
       type: typeLabel,
       durationMin: Math.min(180, minPerSession),
+      rpeTarget: `${rpe.min}-${rpe.max}`,
+      rpeNote: rpe.note || null,
+      restBetweenSetsSec: restSec,
       exercises: exercises.map((e) => ({
         name: e.name,
         sets: e.sets,
@@ -207,15 +268,17 @@ export function buildTrainingPlan(input) {
   const goal = ['kracht_endurance', 'sportevenement'].includes(rawGoal) ? 'prestatie' : rawGoal
   const focuses = FOCUS_BY_GOAL[input.goal] || FOCUS_BY_GOAL[goal] || FOCUS_BY_GOAL.onderhoud
   const baseVolumeMin = getBaseVolumeMinutes(input)
-  const multipliers = getWeekVolumeMultipliers(input.goal || goal)
+  const multipliers = getWeekVolumeMultipliers(goal)
   const intenseSessions = getIntenseSessionsPerWeek(input)
   const daysPerWeek = Math.min(7, Math.max(1, Number(input.days_per_week) || 3))
   const sessionMinutes = Math.min(180, Math.max(15, Number(input.session_minutes) || 60))
+  const splitType = getSplitType(daysPerWeek)
 
   const weeks = []
   for (let w = 0; w < 4; w++) {
     const volumeMin = Math.round(baseVolumeMin * multipliers[w])
     const focus = focuses[w] || focuses[0]
+    const rationale = getTrainingWeekRationale(w, focus, volumeMin, multipliers[w], goal, daysPerWeek)
     weeks.push({
       weekNumber: w + 1,
       weekName: `Week ${w + 1}`,
@@ -224,7 +287,8 @@ export function buildTrainingPlan(input) {
       volumeDescription: `${Math.floor(volumeMin / 60)}u ${volumeMin % 60}min totaal`,
       intenseSessions: w === 3 && multipliers[w] < 1 ? Math.max(0, intenseSessions - 1) : intenseSessions,
       note: w === 3 && multipliers[w] < 1 ? 'Deload: lagere volume en intensiteit voor herstel.' : null,
-      sessions: buildSessionsForWeek(input, focus, volumeMin, w),
+      rationale,
+      sessions: buildSessionsForWeek(input, focus, volumeMin, w, splitType),
     })
   }
 
@@ -235,6 +299,7 @@ export function buildTrainingPlan(input) {
     mainSport: input.main_sport || null,
     daysPerWeek,
     sessionMinutes,
+    splitType,
     weeks,
   }
 }

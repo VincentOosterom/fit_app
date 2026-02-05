@@ -24,11 +24,21 @@ function buildPrintHtml(type, plan, weekOption) {
     if (type === 'nutrition') {
       body += `<p><strong>Energie:</strong> ${week.energyDirection || '—'} · ca. ${week.averageCaloriesPerDay ?? '—'} kcal/dag</p>`
       if (week.macrosPerDay) body += `<p><strong>Macro's:</strong> E ${week.macrosPerDay.protein}g · K ${week.macrosPerDay.carbs}g · V ${week.macrosPerDay.fat}g</p>`
-      body += '<ul>'
-      ;(week.exampleMeals ?? []).forEach((m) => {
-        body += `<li><strong>${m.meal}:</strong> ${m.name} · ${m.kcal} kcal</li>`
-      })
-      body += '</ul>'
+      if (week.days?.length) {
+        week.days.forEach((day) => {
+          body += `<p class="dayLabel"><strong>Dag ${day.dayNumber}</strong></p><ul>`
+          ;(day.meals ?? []).forEach((m) => {
+            body += `<li><strong>${m.meal}:</strong> ${m.name} · ${m.kcal} kcal</li>`
+          })
+          body += '</ul>'
+        })
+      } else {
+        body += '<ul>'
+        ;(week.exampleMeals ?? []).forEach((m) => {
+          body += `<li><strong>${m.meal}:</strong> ${m.name} · ${m.kcal} kcal</li>`
+        })
+        body += '</ul>'
+      }
     } else {
       body += `<p><strong>Focus:</strong> ${week.focus}</p><p>${week.volumeDescription ?? ''}</p>`
       ;(week.sessions ?? []).forEach((sess) => {
@@ -58,6 +68,7 @@ function buildPrintHtml(type, plan, weekOption) {
   p{margin:0.35rem 0;}
   ul{margin:0.5rem 0;padding-left:1.25rem;}
   li{margin:0.25rem 0;}
+  .dayLabel{margin-top:1rem;margin-bottom:0.25rem;}
   .disclaimer{margin-top:2rem;font-size:0.85rem;color:#666;font-style:italic;}
 </style></head><body>${body}</body></html>`
 }

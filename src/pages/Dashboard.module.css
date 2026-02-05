@@ -21,44 +21,100 @@
   color: var(--text-soft);
 }
 
-/* Motivatie-quotes carousel */
-.quoteCarousel {
+/* Event-banner (komend event) */
+.eventBanner {
+  display: block;
+  margin-bottom: 1.5rem;
   padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, var(--accent-soft) 0%, var(--surface) 100%);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.eventBanner:hover {
+  border-color: var(--accent-hover);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+
+.eventBannerTitle {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.eventBannerDate,
+.eventBannerWeeks,
+.eventBannerReadiness {
+  display: inline-block;
+  margin-right: 1rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--text-soft);
+}
+
+@media (min-width: 480px) {
+  .eventBanner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem 1.5rem;
+    align-items: center;
+  }
+
+  .eventBannerTitle {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+  }
+
+  .eventBannerDate,
+  .eventBannerWeeks,
+  .eventBannerReadiness {
+    margin-bottom: 0;
+  }
+}
+
+/* Motivatie-quotes carousel: alleen de tekst, groter lettertype */
+.quoteCarousel {
+  padding: 1.5rem 1.75rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   margin-bottom: 1.5rem;
 }
 
-.quoteText {
-  margin: 0 0 0.75rem;
-  font-size: 1rem;
-  font-style: italic;
-  color: var(--text-soft);
-  line-height: 1.5;
-}
-
-.quoteDots {
+.quoteSlideWrap {
+  min-height: 4rem;
   display: flex;
-  gap: 0.35rem;
-  justify-content: center;
+  align-items: center;
 }
 
-.quoteDot,
-.quoteDotActive {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--border);
+.quoteText {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.5;
+  animation: quoteFade 0.5s ease;
 }
 
-.quoteDotActive {
-  background: var(--accent);
+@keyframes quoteFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* Voortgang */
+/* Voortgang: duidelijker en beter leesbaar */
 .progressBlock {
-  padding: 1.25rem 1.5rem;
+  padding: 1.5rem 1.75rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -66,57 +122,81 @@
 }
 
 .progressTitle {
-  margin: 0 0 0.75rem;
-  font-size: 1.1rem;
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: var(--text);
 }
 
-.progressRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
-  font-size: 0.95rem;
+.progressSubtitle {
+  margin: 0 0 1rem;
+  font-size: 1rem;
   color: var(--text-soft);
 }
 
-.progressWeek {
-  font-weight: 600;
-  color: var(--accent);
-}
-
 .progressBarWrap {
-  height: 8px;
+  height: 12px;
   background: var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
   overflow: hidden;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .progressBar {
   height: 100%;
-  background: var(--accent);
-  border-radius: 4px;
-  transition: width 0.3s ease;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-hover, var(--accent)) 100%);
+  border-radius: 6px;
+  transition: width 0.4s ease;
 }
 
-.progressWeeks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.25rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.progressPct {
+  margin: 0 0 1.25rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.progressWeekGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+@media (min-width: 480px) {
+  .progressWeekGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.progressWeekCard,
+.progressWeekCardDone {
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.progressWeekCardDone {
+  border-color: var(--success);
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.progressWeekNum {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.25rem;
+}
+
+.progressWeekCheck {
   font-size: 0.9rem;
-  color: var(--muted);
-}
-
-.progressWeekDone {
   color: var(--success);
+  font-weight: 500;
 }
 
 .progressWeekOpen {
+  font-size: 0.9rem;
   color: var(--muted);
 }
 
@@ -217,6 +297,30 @@
 }
 
 .generateButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.resetBlock {
+  margin-bottom: 1.5rem;
+}
+
+.resetButton {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  color: var(--text-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.resetButton:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.resetButton:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }

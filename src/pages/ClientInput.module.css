@@ -1,15 +1,20 @@
 .page {
   padding: 0.5rem 0;
+  max-width: 720px;
 }
 
-.page h1 {
+
+.title {
   margin: 0 0 0.5rem;
   font-size: 1.75rem;
+  font-weight: 700;
 }
 
 .intro {
-  color: var(--muted);
+  color: var(--text-soft);
   margin: 0 0 1.5rem;
+  font-size: 1rem;
+  line-height: 1.55;
 }
 
 .error {
@@ -32,51 +37,80 @@
   margin-bottom: 1rem;
 }
 
-.input:disabled,
-.input[readonly] {
-  opacity: 0.85;
-  cursor: not-allowed;
-}
-
 .muted {
   color: var(--muted);
 }
 
 .form {
-  max-width: 960px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-.formGrid {
-  display: grid;
-  gap: 1.5rem 2rem;
-  grid-template-columns: 1fr;
+/* Sectie = kaart met titel + korte uitleg + velden; blijft compact in grid */
+.sectionCard {
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-width: 0; /* voorkomt overflow in grid */
 }
 
-@media (min-width: 720px) {
-  .formGrid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.section {
-  margin-bottom: 0;
-  min-width: 0;
-}
-
-.section h2 {
-  margin: 0 0 0.75rem;
-  font-size: 1rem;
+.sectionTitle {
+  margin: 0 0 0.35rem;
+  font-size: 1.15rem;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--text);
 }
 
-.form label {
+.sectionDesc {
+  margin: 0 0 1.25rem;
+  font-size: 0.9rem;
+  color: var(--text-soft);
+  line-height: 1.45;
+}
+
+.sectionRule {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.88rem;
+  color: var(--text);
+  line-height: 1.5;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  border-left: 3px solid var(--accent);
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem 1.5rem;
+}
+
+.label {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  margin-bottom: 1rem;
+}
+
+.labelFull {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.labelText {
   font-size: 0.9rem;
-  color: var(--muted);
+  font-weight: 500;
+  color: var(--text);
+}
+
+.helper {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-soft);
 }
 
 .input {
@@ -92,35 +126,29 @@
   border-color: var(--accent);
 }
 
+.input:disabled,
+.input[readonly] {
+  opacity: 0.85;
+  cursor: not-allowed;
+}
+
 .check {
+  display: flex;
   flex-direction: row;
   align-items: center;
-}
-
-.check input {
-  margin-right: 0.5rem;
-}
-
-.checkRow {
+  gap: 0.5rem;
   margin-bottom: 0.5rem;
 }
 
-.dietSection {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.dietLabel {
-  font-size: 0.9rem;
-  color: var(--muted);
+.check input {
+  margin: 0;
 }
 
 .dietOptions {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .dietOptions .check {
@@ -130,10 +158,12 @@
 .button {
   padding: 0.75rem 1.25rem;
   background: var(--accent);
-  color: white;
+  color: var(--accent-text);
   border: none;
   border-radius: 6px;
   font-weight: 600;
+  font-size: 1rem;
+  align-self: flex-start;
 }
 
 .button:hover:not(:disabled) {
@@ -141,6 +171,39 @@
 }
 
 .button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Toggle-knoppen voor selects */
+.toggleGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.toggleBtn {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.toggleBtn:hover:not(:disabled) {
+  border-color: var(--text-soft);
+}
+
+.toggleBtnActive {
+  background: var(--accent);
+  color: var(--accent-text, #fff);
+  border-color: var(--accent);
+}
+
+.toggleBtn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }

@@ -26,10 +26,14 @@ export default function Login() {
   const [searchParams] = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState('')
   const [isSignUp, setIsSignUp] = useState(searchParams.get('register') === '1')
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [forgotEmailSent, setForgotEmailSent] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const { signIn, signUp } = useAuth()
+  const { signIn, signUp, recoveryMode, resetPasswordForEmail, updatePassword, clearRecoveryMode } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -58,8 +62,47 @@ export default function Login() {
     }
   }
 
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setBusy(true)
+    try {
+      await resetPasswordForEmail(email.trim())
+      setForgotEmailSent(true)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleSetNewPasswordSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    if (newPassword !== newPasswordConfirm) {
+      setError('De twee wachtwoorden komen niet overeen.')
+      return
+    }
+    if (newPassword.length < 6) {
+      setError('Wachtwoord moet minstens 6 tekens zijn.')
+      return
+    }
+    setBusy(true)
+    try {
+      await updatePassword(newPassword)
+      clearRecoveryMode()
+      navigate('/dashboard', { replace: true })
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const switchMode = (toSignUp) => {
     setIsSignUp(toSignUp)
+    setShowForgotPassword(false)
+    setForgotEmailSent(false)
     setError('')
     setPassword('')
   }
@@ -72,6 +115,94 @@ export default function Login() {
           <p className={styles.error}>
             Supabase is nog niet geconfigureerd. Zet in de projectroot een bestand <code>.env</code> met <code>VITE_SUPABASE_URL</code> en <code>VITE_SUPABASE_ANON_KEY</code>. Start daarna <code>npm run dev</code> opnieuw.
           </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Na klik op link in e-mail: stel nieuw wachtwoord in
+  if (recoveryMode && !isSignUp) {
+    return (
+      <div className={styles.wrap}>
+        <div className={styles.card}>
+          <h1 className={styles.title}>Nieuw wachtwoord instellen</h1>
+          <p className={styles.subtitle}>Kies een nieuw wachtwoord voor je account.</p>
+          <form onSubmit={handleSetNewPasswordSubmit} className={styles.form}>
+            <label>
+              Nieuw wachtwoord
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={6}
+                autoComplete="new-password"
+                className={styles.input}
+                placeholder="Min. 6 tekens"
+              />
+            </label>
+            <label>
+              Wachtwoord bevestigen
+              <input
+                type="password"
+                value={newPasswordConfirm}
+                onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                required
+                minLength={6}
+                autoComplete="new-password"
+                className={styles.input}
+                placeholder="Herhaal nieuw wachtwoord"
+              />
+            </label>
+            {error && <div className={styles.error}>{error}</div>}
+            <button type="submit" disabled={busy} className={styles.button}>
+              {busy ? 'Bezig…' : 'Wachtwoord wijzigen'}
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
+  // Stap 1: e-mail invullen voor wachtwoord vergeten
+  if (showForgotPassword) {
+    return (
+      <div className={styles.wrap}>
+        <div className={styles.card}>
+          <h1 className={styles.title}>Wachtwoord vergeten</h1>
+          <p className={styles.subtitle}>
+            Vul je e-mailadres in. We sturen je een e-mail met een link. Klik op de link om een nieuw wachtwoord in te stellen.
+          </p>
+          {forgotEmailSent ? (
+            <>
+              <p className={styles.success}>We hebben een e-mail gestuurd naar <strong>{email}</strong>. Klik op de link in de e-mail om je wachtwoord te wijzigen.</p>
+              <button type="button" onClick={() => { setShowForgotPassword(false); setForgotEmailSent(false); setError(''); }} className={styles.backLink}>
+                ← Terug naar inloggen
+              </button>
+            </>
+          ) : (
+            <form onSubmit={handleForgotSubmit} className={styles.form}>
+              <label>
+                E-mail
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  className={styles.input}
+                  placeholder="jouw@email.nl"
+                />
+              </label>
+              {error && <div className={styles.error}>{error}</div>}
+              <button type="submit" disabled={busy} className={styles.button}>
+                {busy ? 'Bezig…' : 'Verstuur link'}
+              </button>
+              <button type="button" onClick={() => { setShowForgotPassword(false); setError(''); }} className={styles.backLink}>
+                ← Terug naar inloggen
+              </button>
+            </form>
+          )}
         </div>
       </div>
     )
@@ -122,6 +253,13 @@ export default function Login() {
               placeholder={isSignUp ? 'Min. 6 tekens' : '••••••••'}
             />
           </label>
+          {!isSignUp && (
+            <p className={styles.forgotWrap}>
+              <button type="button" onClick={() => { setShowForgotPassword(true); setError(''); }} className={styles.forgotLink}>
+                Wachtwoord vergeten?
+              </button>
+            </p>
+          )}
           {error && <div className={styles.error}>{error}</div>}
           <button type="submit" disabled={busy} className={styles.button}>
             {busy ? 'Even geduld…' : isSignUp ? 'Account aanmaken' : 'Inloggen'}

@@ -46,6 +46,35 @@
   font-style: italic;
 }
 
+.whyBlock {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.whyTitle {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.whyText {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.whyTip {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+  color: var(--text-soft);
+  font-style: italic;
+}
+
 .intro {
   color: var(--muted);
   margin: 0 0 1rem;
@@ -86,6 +115,34 @@
 .plan h2 {
   font-size: 1.1rem;
   margin-bottom: 1rem;
+}
+
+.dayTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.dayTab,
+.dayTabActive {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.dayTab:hover {
+  background: var(--surface);
+  border-color: var(--accent);
+}
+
+.dayTabActive {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text, #fff);
 }
 
 .day {
@@ -163,6 +220,37 @@
   margin: 0;
   font-size: 0.9rem;
   color: var(--muted);
+}
+
+.weekCardLocked {
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  opacity: 0.85;
+  cursor: not-allowed;
+}
+
+.weekCardLocked h3 {
+  margin: 0 0 0.35rem;
+}
+
+.weekCardLocked p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.weekPlaceholder {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.weekLock {
+  margin-top: 0.5rem !important;
+  font-size: 0.8rem !important;
+  color: var(--muted) !important;
 }
 
 .mealList {
@@ -256,6 +344,13 @@
 
 .exerciseList li {
   margin-bottom: 0.25rem;
+}
+
+.sessionMeta {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
 }
 
 .exerciseRow {

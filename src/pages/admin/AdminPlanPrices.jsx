@@ -4,9 +4,14 @@ import { PLAN_AMOUNTS } from '../../lib/planFeatures'
 import styles from './Admin.module.css'
 
 const KEYS = [
-  { key: 'plan_price_starter_cents', label: 'Starter (€/maand in centen)', default: 795 },
-  { key: 'plan_price_pro_cents', label: 'Pro (€/maand in centen)', default: 999 },
-  { key: 'plan_price_premium_cents', label: 'Premium (€/maand in centen)', default: 1495 },
+  { key: 'plan_price_starter_cents', label: 'Starter (centen)', default: 795 },
+  { key: 'plan_price_pro_cents', label: 'Pro (centen)', default: 999 },
+  { key: 'plan_price_premium_cents', label: 'Premium (centen)', default: 1495 },
+]
+const COACH_KEYS = [
+  { key: 'coach_price_starter_cents', label: 'Starter (centen)', default: 595 },
+  { key: 'coach_price_pro_cents', label: 'Pro (centen)', default: 799 },
+  { key: 'coach_price_premium_cents', label: 'Premium (centen)', default: 1195 },
 ]
 
 export default function AdminPlanPrices() {
@@ -32,16 +37,17 @@ export default function AdminPlanPrices() {
 
   const handleChange = (key, value) => setSettings((s) => ({ ...s, [key]: value }))
 
+  const allKeys = [...KEYS, ...COACH_KEYS]
   const handleSave = async () => {
     setSaving(true)
     setMessage('')
     try {
-      for (const { key } of KEYS) {
+      for (const { key } of allKeys) {
         const raw = settings[key]
         const value = raw === '' || raw === undefined ? null : Number(raw)
         await supabase.from('admin_settings').upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
       }
-      setMessage('Planprijzen opgeslagen. Nieuwe aanmeldingen en planwissels gebruiken deze bedragen.')
+      setMessage('Planprijzen opgeslagen.')
     } catch (e) {
       setMessage('Opslaan mislukt: ' + (e.message || ''))
     } finally {
@@ -55,9 +61,10 @@ export default function AdminPlanPrices() {
     <div className={styles.page}>
       <h1>Planprijzen</h1>
       <p className={styles.intro}>
-        Stel de maandprijzen in voor de drie plannen (in centen, bijv. 795 = €7,95). Deze worden gebruikt bij planwijziging en bij nieuwe subscriptions.
+        Stel de maandprijzen in (in centen: 795 = €7,95). Klantprijzen gelden voor directe klanten; coachprijzen zijn wat coaches kunnen hanteren voor hun klanten.
       </p>
       <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Klantprijzen</h2>
         {KEYS.map(({ key, label, default: def }) => (
           <label key={key} className={styles.label}>
             {label}
@@ -70,10 +77,30 @@ export default function AdminPlanPrices() {
               placeholder={String(def)}
               className={styles.input}
             />
+            <span className={styles.hint}>€{((settings[key] ?? def ?? 0) / 100).toFixed(2)}/maand</span>
+          </label>
+        ))}
+      </section>
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Coachprijzen</h2>
+        <p className={styles.introSub}>Prijzen die coaches zien voor hun plannen (kan lager zijn dan klantprijzen).</p>
+        {COACH_KEYS.map(({ key, label, default: def }) => (
+          <label key={key} className={styles.label}>
+            {label}
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={settings[key] ?? def ?? ''}
+              onChange={(e) => handleChange(key, e.target.value)}
+              placeholder={String(def)}
+              className={styles.input}
+            />
+            <span className={styles.hint}>€{((settings[key] ?? def ?? 0) / 100).toFixed(2)}/maand</span>
           </label>
         ))}
         <button type="button" onClick={handleSave} disabled={saving} className={styles.btnPrimary}>
-          {saving ? 'Opslaan…' : 'Opslaan'}
+          {saving ? 'Opslaan…' : 'Alle prijzen opslaan'}
         </button>
         {message && <p className={styles.message}>{message}</p>}
       </section>

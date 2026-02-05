@@ -13,8 +13,8 @@
   --accent-text: #1a1a1a;
   --success: #b8ff00;
   --radius: 6px;
-  --font: 'Plus Jakarta Sans', system-ui, sans-serif;
-  --font-heading: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 * {

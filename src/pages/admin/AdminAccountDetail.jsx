@@ -1,6 +1,7 @@
 import { useParams, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { COACH_TIERS, COACH_TIER_NAMES } from '../../lib/coachSubscription'
 import styles from './Admin.module.css'
 
 export default function AdminAccountDetail() {
@@ -58,7 +59,7 @@ export default function AdminAccountDetail() {
   }
 
   const handleSoftDelete = async () => {
-    if (!userId || !confirm('Account als verwijderd markeren? De gebruiker kan daarna niet meer inloggen (blokkeren heeft hetzelfde effect).')) return
+    if (!userId || !window.confirm('Account als verwijderd markeren? De gebruiker kan daarna niet meer inloggen.')) return
     setActionBusy(true)
     setMessage('')
     try {
@@ -66,6 +67,70 @@ export default function AdminAccountDetail() {
       if (error) throw error
       setProfile((p) => (p ? { ...p, deleted_at: new Date().toISOString(), is_blocked: true } : null))
       setMessage('Account gemarkeerd als verwijderd en geblokkeerd.')
+    } catch (e) {
+      setMessage(e.message || 'Actie mislukt.')
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  const handleResetAccount = async () => {
+    if (!userId || !window.confirm('Account resetten? Alle input, schema\'s en evaluaties worden verwijderd. Abonnement en profiel blijven behouden.')) return
+    setActionBusy(true)
+    setMessage('')
+    try {
+      const { data, error } = await supabase.rpc('admin_reset_account', { target_user_id: userId })
+      if (error) throw error
+      if (data?.ok === false) {
+        setMessage(data.error || 'Reset mislukt.')
+        return
+      }
+      setInput(null)
+      setTrainingPlans([])
+      setNutritionPlans([])
+      setMessage('Account gereset.')
+    } catch (e) {
+      setMessage(e.message || 'Reset mislukt.')
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  const handleCoachSubscriptionChange = async (tier) => {
+    if (!userId || !profile || profile.role !== 'coach') return
+    setActionBusy(true)
+    setMessage('')
+    try {
+      const { error } = await supabase.from('profiles').update({ coach_subscription: tier }).eq('id', userId)
+      if (error) throw error
+      setProfile((p) => (p ? { ...p, coach_subscription: tier } : null))
+      setMessage('Coach-abonnement bijgewerkt.')
+    } catch (e) {
+      setMessage(e.message || 'Opslaan mislukt.')
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  const handleSetCoachRole = async (makeCoach) => {
+    if (!userId) return
+    if (makeCoach && !window.confirm('Deze gebruiker als coach aanstellen?')) return
+    if (!makeCoach && !window.confirm('Rol coach verwijderen? Alle gekoppelde klanten worden ontkoppeld.')) return
+    setActionBusy(true)
+    setMessage('')
+    try {
+      if (makeCoach) {
+        const { error } = await supabase.from('profiles').update({ role: 'coach' }).eq('id', userId)
+        if (error) throw error
+        setProfile((p) => (p ? { ...p, role: 'coach' } : null))
+        setMessage('Gebruiker is nu coach.')
+      } else {
+        await supabase.from('profiles').update({ coach_id: null }).eq('coach_id', userId)
+        const { error } = await supabase.from('profiles').update({ role: 'client' }).eq('id', userId)
+        if (error) throw error
+        setProfile((p) => (p ? { ...p, role: 'client' } : null))
+        setMessage('Rol coach verwijderd.')
+      }
     } catch (e) {
       setMessage(e.message || 'Actie mislukt.')
     } finally {
@@ -93,74 +158,67 @@ export default function AdminAccountDetail() {
           <dt>Geregistreerd</dt><dd>{profile.created_at ? new Date(profile.created_at).toLocaleString('nl-NL') : '—'}</dd>
         </dl>
         <div className={styles.actions}>
+          {profile.role === 'coach' ? (
+            <button type="button" onClick={() => handleSetCoachRole(false)} disabled={actionBusy} className={styles.btnSecondary}>Rol coach verwijderen</button>
+          ) : (
+            <button type="button" onClick={() => handleSetCoachRole(true)} disabled={actionBusy} className={styles.btnPrimary}>Als coach aanstellen</button>
+          )}
           {profile.is_blocked ? (
             <button type="button" onClick={() => handleBlock(false)} disabled={actionBusy} className={styles.btnSecondary}>Deblokkeren</button>
           ) : (
-            <button type="button" onClick={() => handleBlock(true)} disabled={actionBusy} className={styles.btnDanger}>Blokkeren</button>
+            <button type="button" onClick={() => handleBlock(true)} disabled={actionBusy} className={styles.btnSecondary}>Blokkeren</button>
           )}
           <button type="button" onClick={handleSoftDelete} disabled={actionBusy || !!profile.deleted_at} className={styles.btnDanger}>Account verwijderen (markeren)</button>
+          <button type="button" onClick={handleResetAccount} disabled={actionBusy} className={styles.btnSecondary}>Account resetten</button>
         </div>
         {message && <p className={styles.message}>{message}</p>}
       </section>
 
+      {profile.role === 'coach' && (
+        <section className={styles.section}>
+          <h2>Coach-abonnement</h2>
+          <p className={styles.introSub}>Abonnementniveau van deze coach (Starter: max 10 klanten, Pro: max 50, Premium: onbeperkt).</p>
+          <div className={styles.formRow}>
+            <label htmlFor="coach-sub">Niveau</label>
+            <select
+              id="coach-sub"
+              value={profile.coach_subscription ?? 'starter'}
+              onChange={(e) => handleCoachSubscriptionChange(e.target.value)}
+              disabled={actionBusy}
+              className={styles.input}
+            >
+              {COACH_TIERS.map((t) => (
+                <option key={t} value={t}>{COACH_TIER_NAMES[t]}</option>
+              ))}
+            </select>
+          </div>
+        </section>
+      )}
+
       <section className={styles.section}>
         <h2>Abonnement & betalingen</h2>
         <dl className={styles.dl}>
-          <dt>Status abonnement</dt><dd>{subscription ? subscription.status : 'Geen'}</dd>
-          <dt>Actief (ja/nee)</dt><dd>{subscription ? (isActive ? 'Ja' : 'Nee') : '—'}</dd>
+          <dt>Status</dt><dd>{subscription ? subscription.status : 'Geen'}</dd>
+          <dt>Actief</dt><dd>{subscription ? (isActive ? 'Ja' : 'Nee') : '—'}</dd>
           <dt>Bedrag</dt><dd>{subscription?.amount_cents != null ? `€ ${(subscription.amount_cents / 100).toFixed(2)}` : '—'}</dd>
         </dl>
-        <h3>Betalingen</h3>
-        {payments.length === 0 ? (
-          <p className={styles.muted}>Geen betalingen.</p>
-        ) : (
+        {payments.length > 0 && (
           <ul className={styles.list}>
             {payments.map((pay) => (
-              <li key={pay.id}>{new Date(pay.paid_at).toLocaleDateString('nl-NL')} — € {(pay.amount_cents / 100).toFixed(2)} {pay.description ? `— ${pay.description}` : ''}</li>
+              <li key={pay.id}>{new Date(pay.paid_at).toLocaleDateString('nl-NL')} — € {(pay.amount_cents / 100).toFixed(2)}</li>
             ))}
           </ul>
         )}
       </section>
 
       <section className={styles.section}>
-        <h2>Input (client_input)</h2>
-        {input ? (
-          <dl className={styles.dl}>
-            <dt>Doel</dt><dd>{input.goal ?? '—'}</dd>
-            <dt>Niveau</dt><dd>{input.level ?? '—'}</dd>
-            <dt>Dagen/week</dt><dd>{input.days_per_week ?? '—'}</dd>
-          </dl>
-        ) : (
-          <p className={styles.muted}>Geen input.</p>
-        )}
+        <h2>Input</h2>
+        {input ? <dl className={styles.dl}><dt>Doel</dt><dd>{input.goal ?? '—'}</dd><dt>Niveau</dt><dd>{input.level ?? '—'}</dd></dl> : <p className={styles.muted}>Geen input.</p>}
       </section>
 
       <section className={styles.section}>
-        <h2>Schema’s</h2>
-        <h3>Trainingsschema’s ({trainingPlans.length})</h3>
-        {trainingPlans.length === 0 ? (
-          <p className={styles.muted}>Geen.</p>
-        ) : (
-          <ul className={styles.list}>
-            {trainingPlans.map((t) => (
-              <li key={t.id}>
-                {new Date(t.created_at).toLocaleDateString('nl-NL')} — block_id: {t.block_id ? String(t.block_id).slice(0, 8) + '…' : '—'}
-              </li>
-            ))}
-          </ul>
-        )}
-        <h3>Voedingsschema’s ({nutritionPlans.length})</h3>
-        {nutritionPlans.length === 0 ? (
-          <p className={styles.muted}>Geen.</p>
-        ) : (
-          <ul className={styles.list}>
-            {nutritionPlans.map((n) => (
-              <li key={n.id}>
-                {new Date(n.created_at).toLocaleDateString('nl-NL')} — block_id: {n.block_id ? String(n.block_id).slice(0, 8) + '…' : '—'}
-              </li>
-            ))}
-          </ul>
-        )}
+        <h2>Schema&apos;s</h2>
+        <p>Trainingsschema&apos;s: {trainingPlans.length} · Voedingsschema&apos;s: {nutritionPlans.length}</p>
       </section>
     </div>
   )

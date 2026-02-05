@@ -2,134 +2,326 @@
   padding: 0.5rem 0;
 }
 
-.back {
-  margin: 0 0 1rem;
-  font-size: 0.9rem;
-}
-
-.back a {
-  color: var(--muted);
-}
-
 .page h1 {
   margin: 0 0 0.5rem;
-  font-size: 1.75rem;
+  font-size: 1.5rem;
 }
 
 .intro {
   color: var(--text-soft);
   margin: 0 0 1.5rem;
-  max-width: 560px;
+  font-size: 0.95rem;
 }
 
-.success {
-  color: var(--accent);
-  margin-bottom: 1rem;
-}
-
-.error {
-  color: #f87171;
-  margin-bottom: 1rem;
-}
-
-.muted {
-  color: var(--muted);
-}
-
-.grid {
+.planGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 1.25rem;
+  margin-bottom: 1rem;
+  align-items: stretch;
 }
 
-.card {
-  position: relative;
-  padding: 1.5rem;
+.planCard,
+.planCardCurrent {
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 12px;
+  position: relative;
+  min-height: 320px;
 }
 
-.cardActive {
+.planCardCurrent {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.planCardInner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .badge {
   position: absolute;
-  top: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--accent);
-  color: var(--accent-text);
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.3rem 0.6rem;
-  border-radius: 4px;
+  top: 0.75rem;
+  right: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
-.card h2 {
+.planCard h2 {
   margin: 0 0 0.5rem;
   font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text);
 }
 
 .price {
-  margin: 0 0 1rem;
-  font-size: 1.5rem;
-  font-weight: 800;
+  font-size: 1.25rem;
+  font-weight: 700;
   color: var(--accent);
+  margin: 0;
 }
 
-.price span {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.features {
-  margin: 0 0 1.25rem;
-  padding-left: 1.15rem;
+.muted {
   font-size: 0.9rem;
   color: var(--text-soft);
-  line-height: 1.7;
+  margin: 0.25rem 0 1rem;
 }
 
-.features li {
-  margin-bottom: 0.35rem;
+.perMonth {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+  margin: 0 0 0.75rem;
 }
 
-.button {
-  width: 100%;
-  padding: 0.75rem 1rem;
+.tagline {
+  font-size: 0.85rem;
+  color: var(--text-soft);
+  line-height: 1.4;
+  margin: 0 0 1rem;
+}
+
+.btnSelect {
+  padding: 0.5rem 1rem;
   background: var(--accent);
   color: var(--accent-text);
   border: none;
   border-radius: var(--radius);
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
-.button:hover:not(:disabled) {
-  background: var(--accent-hover);
+.btnSelect:hover:not(:disabled) {
+  opacity: 0.95;
 }
 
-.buttonCurrent {
-  width: 100%;
-  padding: 0.75rem 1rem;
+.btnSelect:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnCurrent {
+  padding: 0.5rem 1rem;
   background: var(--surface-alt);
-  color: var(--muted);
+  color: var(--text-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  cursor: default;
+}
+
+.message {
+  margin-top: 1rem;
+  font-size: 0.95rem;
+  color: var(--text-soft);
+}
+
+.tableSection {
+  margin-bottom: 2rem;
+}
+
+.tableTitle {
+  font-size: 1.1rem;
+  margin: 0 0 0.75rem;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.comparisonTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.comparisonTable th,
+.comparisonTable td {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.comparisonTable th {
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-alt);
+}
+
+.comparisonTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.cellFeature {
+  min-width: 200px;
+  color: var(--text-soft);
+}
+
+.cellPlan {
+  min-width: 80px;
+  text-align: center;
+}
+
+.chooseTitle {
+  font-size: 1.1rem;
+  margin: 0 0 1rem;
+}
+
+.featureList {
+  margin: 0 0 0.75rem;
+  padding-left: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-soft);
+  line-height: 1.5;
+  flex: 1;
+  min-height: 0;
+}
+
+.featureList li {
+  margin-bottom: 0.3rem;
+}
+
+.seeMoreBtn {
+  margin-top: 0.25rem;
+  padding: 0.35rem 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.seeMoreBtn:hover {
+  text-decoration: underline;
+}
+
+.seeLessBtn {
+  margin-top: 0.25rem;
+  padding: 0.35rem 0;
+  background: none;
+  border: none;
+  color: var(--text-soft);
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.seeLessBtn:hover {
+  color: var(--accent);
+}
+
+/* Bevestigingsmodal: Weet je het zeker? */
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  animation: confirmFadeIn 0.2s ease-out;
+}
+
+@keyframes confirmFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.confirmModal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  max-width: 380px;
+  width: 100%;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  animation: confirmSlideUp 0.25s ease-out;
+}
+
+@keyframes confirmSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.confirmTitle {
+  margin: 0 0 0.75rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.confirmText {
+  margin: 0 0 1.25rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--text-soft);
+}
+
+.confirmText strong {
+  color: var(--accent);
+}
+
+.confirmActions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.confirmBtnSecondary {
+  flex: 1;
+  min-width: 100px;
+  padding: 0.65rem 1rem;
+  background: transparent;
+  color: var(--text-soft);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font-weight: 600;
-  cursor: default;
   font-size: 0.95rem;
+  cursor: pointer;
 }
 
-.button:disabled,
-.buttonCurrent:disabled {
+.confirmBtnSecondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.confirmBtnPrimary {
+  flex: 1;
+  min-width: 120px;
+  padding: 0.65rem 1rem;
+  background: var(--accent);
+  color: var(--accent-text);
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.confirmBtnPrimary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.confirmBtnPrimary:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }

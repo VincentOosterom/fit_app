@@ -8,7 +8,6 @@ export function useSubscription() {
   const [subscription, setSubscription] = useState(null)
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
-
   const [planPrices, setPlanPrices] = useState(PLAN_AMOUNTS)
 
   useEffect(() => {
@@ -21,12 +20,14 @@ export function useSubscription() {
       const [subRes, payRes, pricesRes] = await Promise.all([
         supabase.from('subscriptions').select('*').eq('user_id', user.id).maybeSingle(),
         supabase.from('payments').select('*').eq('user_id', user.id).order('paid_at', { ascending: false }).limit(10),
-        supabase.rpc('get_plan_prices').then(({ data }) => data),
+        supabase.rpc('get_plan_prices').then(({ data }) => data).catch(() => null),
       ])
       if (!cancelled) {
         setSubscription(subRes.data ?? null)
         setPayments(payRes.data ?? [])
-        if (pricesRes && typeof pricesRes === 'object') setPlanPrices((p) => ({ ...p, ...pricesRes }))
+        if (pricesRes && typeof pricesRes === 'object') {
+          setPlanPrices((p) => ({ ...p, ...pricesRes }))
+        }
       }
       setLoading(false)
     }
@@ -38,6 +39,7 @@ export function useSubscription() {
   const amountCents = subscription?.amount_cents ?? planPrices[planType] ?? PLAN_AMOUNTS.starter
   const nextBillingDate = subscription?.current_period_end
   const isActive = subscription?.status === 'active' || subscription?.status === 'trialing'
+  const restartCount = subscription?.restart_count ?? 0
 
   const setPlan = async (newPlanType) => {
     if (!user?.id) return { error: 'Niet ingelogd' }
@@ -62,8 +64,20 @@ export function useSubscription() {
       })
       if (error) return { error: error.message }
     }
-    setSubscription((s) => ({ ...s, plan_type: newPlanType, amount_cents: amount }))
+    setSubscription((s) => (s ? { ...s, plan_type: newPlanType, amount_cents: amount } : null))
     return {}
+  }
+
+  const refetch = async () => {
+    if (!user?.id) return
+    const [subRes, payRes, pricesRes] = await Promise.all([
+      supabase.from('subscriptions').select('*').eq('user_id', user.id).maybeSingle(),
+      supabase.from('payments').select('*').eq('user_id', user.id).order('paid_at', { ascending: false }).limit(10),
+      supabase.rpc('get_plan_prices').then(({ data }) => data).catch(() => null),
+    ])
+    setSubscription(subRes.data ?? null)
+    setPayments(payRes.data ?? [])
+    if (pricesRes && typeof pricesRes === 'object') setPlanPrices((p) => ({ ...p, ...pricesRes }))
   }
 
   return {
@@ -77,17 +91,8 @@ export function useSubscription() {
     amountFormatted: `€ ${(amountCents / 100).toFixed(2).replace('.', ',')}`,
     nextBillingDate,
     isActive,
+    restartCount,
     setPlan,
-    refetch: async () => {
-      if (!user?.id) return
-      const [subRes, payRes, pricesRes] = await Promise.all([
-        supabase.from('subscriptions').select('*').eq('user_id', user.id).maybeSingle(),
-        supabase.from('payments').select('*').eq('user_id', user.id).order('paid_at', { ascending: false }).limit(10),
-        supabase.rpc('get_plan_prices').then(({ data }) => data),
-      ])
-      setSubscription(subRes.data ?? null)
-      setPayments(payRes.data ?? [])
-      if (pricesRes && typeof pricesRes === 'object') setPlanPrices((p) => ({ ...p, ...pricesRes }))
-    },
+    refetch,
   }
 }

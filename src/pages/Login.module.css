@@ -59,6 +59,46 @@
   color: #f87171;
 }
 
+.success {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.forgotWrap {
+  margin: -0.25rem 0 0;
+}
+
+.forgotLink {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.forgotLink:hover {
+  text-decoration: underline;
+}
+
+.backLink {
+  display: block;
+  margin-top: 1rem;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
 .error a {
   color: #fca5a5;
   text-decoration: underline;

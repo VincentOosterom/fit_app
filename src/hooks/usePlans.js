@@ -37,7 +37,9 @@ export function usePlans() {
   const blockReviews = blockId ? reviews.filter((r) => r.block_id === blockId) : []
   const week4Review = blockReviews.find((r) => r.week_number === 4)
   const canGenerateAgain = week4Review?.wants_follow_up === true
-  const showGenerate = !hasAnyPlan || canGenerateAgain
+  const onlyNutrition = nutritionPlan && !trainingPlan
+  const onlyTraining = trainingPlan && !nutritionPlan
+  const showGenerate = !hasAnyPlan || canGenerateAgain || onlyNutrition || onlyTraining
 
   const refetch = async () => {
     if (!user?.id) return
@@ -60,6 +62,9 @@ export function usePlans() {
     blockId,
     blockReviews,
     week4Review,
+    canGenerateAgain,
+    onlyNutrition,
+    onlyTraining,
     showGenerate,
     refetch,
   }

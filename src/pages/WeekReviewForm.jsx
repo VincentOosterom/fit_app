@@ -30,11 +30,14 @@ export default function WeekReviewForm({ blockId, weekNumber, existingReview, on
   const [form, setForm] = useState({
     how_went: existingReview?.how_went ?? '',
     hungry_or_futloos: existingReview?.hungry_or_futloos ?? '',
+    weight_kg: existingReview?.weight_kg != null ? String(existingReview.weight_kg) : '',
     slept_well: existingReview?.slept_well ?? '',
     training_went_well: existingReview?.training_went_well ?? '',
     what_better_sleep: existingReview?.what_better_sleep ?? '',
     what_better_eating: existingReview?.what_better_eating ?? '',
     what_better_training: existingReview?.what_better_training ?? '',
+    cheat_day: existingReview?.cheat_day ?? false,
+    ate_out: existingReview?.ate_out ?? false,
     cheat_day_notes: existingReview?.cheat_day_notes ?? '',
     wants_follow_up: existingReview?.wants_follow_up ?? false,
   })
@@ -44,17 +47,21 @@ export default function WeekReviewForm({ blockId, weekNumber, existingReview, on
     if (!blockId || !user?.id) return
     setSaving(true)
     try {
+      const weightKg = form.weight_kg.trim() ? parseFloat(form.weight_kg.replace(',', '.')) : null
       await supabase.from('week_reviews').upsert({
         user_id: user.id,
         block_id: blockId,
         week_number: weekNumber,
         how_went: form.how_went || null,
         hungry_or_futloos: form.hungry_or_futloos || null,
+        weight_kg: Number.isFinite(weightKg) ? weightKg : null,
         slept_well: form.slept_well || null,
         training_went_well: form.training_went_well || null,
         what_better_sleep: form.what_better_sleep.trim() || null,
         what_better_eating: form.what_better_eating.trim() || null,
         what_better_training: form.what_better_training.trim() || null,
+        cheat_day: form.cheat_day ?? false,
+        ate_out: form.ate_out ?? false,
         cheat_day_notes: form.cheat_day_notes.trim() || null,
         wants_follow_up: weekNumber === 4 ? form.wants_follow_up : false,
       }, { onConflict: 'user_id,block_id,week_number' })
@@ -138,6 +145,11 @@ export default function WeekReviewForm({ blockId, weekNumber, existingReview, on
       </label>
 
       <label>
+        Gewicht nu (kg) — optioneel, voor aanpassing volgende week
+        <input type="text" inputMode="decimal" value={form.weight_kg} onChange={(e) => setForm((f) => ({ ...f, weight_kg: e.target.value }))} placeholder="Bijv. 72.5" className={styles.input} />
+      </label>
+
+      <label>
         Heb je goed geslapen?
         <select value={form.slept_well} onChange={(e) => setForm((f) => ({ ...f, slept_well: e.target.value }))} className={styles.input}>
           <option value="">—</option>
@@ -169,9 +181,17 @@ export default function WeekReviewForm({ blockId, weekNumber, existingReview, on
         Wat kan beter qua training? (optioneel)
         <input type="text" value={form.what_better_training} onChange={(e) => setForm((f) => ({ ...f, what_better_training: e.target.value }))} placeholder="Optioneel" className={styles.input} />
       </label>
+      <label className={styles.check}>
+        <input type="checkbox" checked={form.cheat_day} onChange={(e) => setForm((f) => ({ ...f, cheat_day: e.target.checked }))} />
+        Ik heb deze week een cheat day gehad
+      </label>
+      <label className={styles.check}>
+        <input type="checkbox" checked={form.ate_out} onChange={(e) => setForm((f) => ({ ...f, ate_out: e.target.checked }))} />
+        Ik ben uit eten geweest
+      </label>
       <label>
-        Cheat day of uit eten gehad?
-        <textarea value={form.cheat_day_notes} onChange={(e) => setForm((f) => ({ ...f, cheat_day_notes: e.target.value }))} placeholder="Optioneel" rows={2} className={styles.input} />
+        Toelichting (optioneel)
+        <textarea value={form.cheat_day_notes} onChange={(e) => setForm((f) => ({ ...f, cheat_day_notes: e.target.value }))} placeholder="Bijv. welke dag, wat at je" rows={2} className={styles.input} />
       </label>
       <button type="submit" disabled={saving} className={styles.button}>{saving ? 'Opslaan…' : 'Versturen'}</button>
     </form>

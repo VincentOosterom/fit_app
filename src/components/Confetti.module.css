@@ -1,0 +1,50 @@
+.wrap {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1001;
+}
+
+.particle {
+  position: absolute;
+  left: var(--x);
+  top: -10px;
+  width: var(--size);
+  height: var(--size);
+  background: var(--color);
+  border-radius: 2px;
+  animation: confettiFall var(--duration) var(--delay) ease-out forwards;
+  opacity: 0;
+}
+
+.particle:nth-child(odd) {
+  transform: rotate(0deg);
+}
+
+.particle:nth-child(even) {
+  transform: rotate(45deg);
+}
+
+@keyframes confettiFall {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+  }
+  15% {
+    transform: translateY(20vh) translateX(5vw) rotate(180deg);
+  }
+  30% {
+    transform: translateY(40vh) translateX(-3vw) rotate(360deg);
+  }
+  50% {
+    transform: translateY(60vh) translateX(4vw) rotate(540deg);
+  }
+  70% {
+    transform: translateY(80vh) translateX(-2vw) rotate(720deg);
+  }
+  100% {
+    opacity: 0.8;
+    transform: translateY(110vh) translateX(0) rotate(900deg);
+  }
+}
