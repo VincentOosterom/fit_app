@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -9,6 +9,9 @@ import { useSubscription } from '../hooks/useSubscription'
 import { hasFeature, getUpgradeMessage } from '../lib/planFeatures'
 import { buildTrainingPlan } from '../rules/trainingEngine'
 import { buildNutritionPlan } from '../rules/nutritionEngine'
+import { getWelcomeByTime } from '../lib/welcomeTexts'
+import { MOTIVATION_QUOTES } from '../lib/motivationQuotes'
+import { getCurrentWeek } from '../utils/weekEvaluation'
 import styles from './Dashboard.module.css'
 
 function formatDate(iso) {
@@ -17,11 +20,61 @@ function formatDate(iso) {
   return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+function QuoteCarousel() {
+  const [index, setIndex] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % MOTIVATION_QUOTES.length)
+    }, 6000)
+    return () => clearInterval(id)
+  }, [])
+  return (
+    <div className={styles.quoteCarousel}>
+      <p className={styles.quoteText}>{MOTIVATION_QUOTES[index]}</p>
+      <div className={styles.quoteDots}>
+        {MOTIVATION_QUOTES.map((_, i) => (
+          <span key={i} className={i === index ? styles.quoteDotActive : styles.quoteDot} aria-hidden />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ProgressBlock({ planCreatedAt, blockReviews }) {
+  const currentWeek = getCurrentWeek(planCreatedAt)
+  const reviewedWeeks = (blockReviews || []).map((r) => r.week_number)
+  const count = reviewedWeeks.length
+  const pct = Math.round((count / 4) * 100)
+  return (
+    <section className={styles.progressBlock}>
+      <h2 className={styles.progressTitle}>Je voortgang</h2>
+      <div className={styles.progressRow}>
+        <span className={styles.progressWeek}>
+          Week {currentWeek ?? 1} van 4
+        </span>
+        <span className={styles.progressReviews}>
+          Evaluaties ingevuld: {count}/4
+        </span>
+      </div>
+      <div className={styles.progressBarWrap}>
+        <div className={styles.progressBar} style={{ width: `${pct}%` }} />
+      </div>
+      <ul className={styles.progressWeeks}>
+        {[1, 2, 3, 4].map((w) => (
+          <li key={w} className={reviewedWeeks.includes(w) ? styles.progressWeekDone : styles.progressWeekOpen}>
+            Week {w} {reviewedWeeks.includes(w) ? '✓' : '—'}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 export default function Dashboard() {
   const { user } = useAuth()
-  const { isAdmin } = useProfile()
+  const { isAdmin, profile } = useProfile()
   const { input, loading: inputLoading, error } = useClientInput()
-  const { trainingPlan, nutritionPlan, loading: plansLoading, showGenerate, canGenerateAgain, refetch } = usePlans()
+  const { trainingPlan, nutritionPlan, loading: plansLoading, showGenerate, canGenerateAgain, refetch, blockReviews, blockId } = usePlans()
   const { planType, planName, amountFormatted, nextBillingDate, loading: subLoading } = useSubscription()
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState(null)
@@ -52,10 +105,28 @@ export default function Dashboard() {
 
   const loading = inputLoading || plansLoading || subLoading
   const canExportPdf = hasFeature(planType, 'export_pdf')
+  const { greeting, followUp } = getWelcomeByTime()
+  const displayName = profile?.full_name?.trim() || null
 
   return (
     <div className={styles.dashboard}>
-      <h1>Dashboard</h1>
+      <section className={styles.welcomeBlock}>
+        <h1 className={styles.welcomeTitle}>
+          {displayName ? `${greeting.replace(/\.$/, '')}, ${displayName}.` : greeting}
+        </h1>
+        <p className={styles.welcomeFollowUp}>{followUp}</p>
+      </section>
+
+      <QuoteCarousel />
+
+      {blockId && (nutritionPlan || trainingPlan) && (
+        <ProgressBlock
+          planCreatedAt={nutritionPlan?.created_at || trainingPlan?.created_at}
+          blockReviews={blockReviews}
+        />
+      )}
+
+      <h2 className={styles.sectionTitle}>Overzicht</h2>
       <p className={styles.intro}>
         Stel je doelen in, genereer één keer je 4-weekse schema. Na elke week vul je een korte evaluatie in; na week 4 kun je een vervolg schema krijgen of laten aanpassen.
       </p>

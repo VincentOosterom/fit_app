@@ -9,8 +9,20 @@
 
 .intro {
   color: var(--muted);
-  margin: 0 0 1.5rem;
+  margin: 0 0 0.5rem;
   font-size: 0.95rem;
+}
+
+.introSub {
+  color: var(--muted);
+  margin: 0 0 1.5rem;
+  font-size: 0.85rem;
+}
+
+.introSub code {
+  background: var(--surface);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
 }
 
 .back {

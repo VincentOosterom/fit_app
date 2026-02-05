@@ -27,6 +27,7 @@ export const PLAN_FEATURES = {
   concrete_training_sessions: ['pro', 'premium'],
   supplement_advice: ['pro', 'premium'],
   export_pdf: ['pro', 'premium'],
+  boodschappenlijst: ['pro', 'premium'],
   priority_schema: ['pro', 'premium'],
   email_support_48h: ['pro', 'premium'],
   progress_overview: ['pro', 'premium'],

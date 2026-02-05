@@ -58,6 +58,7 @@ export function usePlans() {
     loading,
     hasAnyPlan,
     blockId,
+    blockReviews,
     week4Review,
     showGenerate,
     refetch,

@@ -20,3 +20,15 @@ export function getWeekEvaluationAvailability(planCreatedAt, weekNumber) {
 export function formatAvailableDate(date) {
   return date.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
+
+/** Bepaalt in welke week (1–4) van het blok we nu zitten op basis van plan startdatum. */
+export function getCurrentWeek(planCreatedAt) {
+  if (!planCreatedAt) return null
+  const start = new Date(planCreatedAt).getTime()
+  const now = Date.now()
+  const daysSinceStart = (now - start) / MS_PER_DAY
+  if (daysSinceStart < 0) return 1
+  const week = Math.floor(daysSinceStart / DAYS_PER_WEEK) + 1
+  if (week > 4) return 4
+  return Math.max(1, week)
+}

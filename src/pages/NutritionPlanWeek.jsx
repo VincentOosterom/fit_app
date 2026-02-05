@@ -2,9 +2,12 @@ import { useParams, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useSubscription } from '../hooks/useSubscription'
+import { hasFeature, getUpgradeMessage } from '../lib/planFeatures'
 import WeekReviewForm from './WeekReviewForm'
 import { getWeekEvaluationAvailability, formatAvailableDate } from '../utils/weekEvaluation'
 import { getMealOptions, MEAL_SLOTS } from '../rules/nutritionEngine'
+import { getShoppingListForMeals } from '../lib/foodLibrary'
 import styles from './Plan.module.css'
 
 const MEAL_LABELS = { ontbijt: 'Ontbijt', lunch: 'Lunch', avond: 'Avondeten', snack1: 'Snack', snack2: 'Snack' }
@@ -12,11 +15,13 @@ const MEAL_LABELS = { ontbijt: 'Ontbijt', lunch: 'Lunch', avond: 'Avondeten', sn
 export default function NutritionPlanWeek() {
   const { id, weekNum } = useParams()
   const { user } = useAuth()
+  const { planType } = useSubscription()
   const weekNumber = Math.max(1, Math.min(4, parseInt(weekNum, 10) || 1))
   const [row, setRow] = useState(null)
   const [reviews, setReviews] = useState([])
   const [overrides, setOverrides] = useState({})
   const [loading, setLoading] = useState(true)
+  const canBoodschappen = hasFeature(planType, 'boodschappenlijst')
 
   useEffect(() => {
     if (!id || !user?.id) {
@@ -80,6 +85,25 @@ export default function NutritionPlanWeek() {
     ? displayMeals.reduce((acc, m) => ({ kcal: acc.kcal + m.kcal, protein: acc.protein + m.protein, carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat }), { kcal: 0, protein: 0, carbs: 0, fat: 0 })
     : week?.exampleDayTotal
 
+  const handleDownloadBoodschappen = () => {
+    const list = getShoppingListForMeals(displayMeals)
+    const lines = [
+      `Boodschappenlijst – Week ${weekNumber}`,
+      'Precies wat je nodig hebt voor deze voorbeelddag.',
+      '',
+      ...displayMeals.map((m) => `• ${m.meal}: ${m.name}`),
+      '',
+      'Ingrediënten:',
+      ...list.map((i) => `• ${i}`),
+    ]
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `Boodschappenlijst-week-${weekNumber}.txt`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
   return (
     <div className={styles.page}>
       <p className={styles.back}>
@@ -104,6 +128,15 @@ export default function NutritionPlanWeek() {
           <div className={styles.day}>
             <h3>Wat je kunt eten (voorbeelddag)</h3>
             <p className={styles.calories}>Vind je iets niet lekker? Klik op &quot;Kies iets anders&quot; voor een vergelijkbaar alternatief.</p>
+            {canBoodschappen ? (
+              <p className={styles.calories}>
+                <button type="button" className={styles.shoppingBtn} onClick={handleDownloadBoodschappen}>
+                  Download boodschappenlijst voor deze week
+                </button>
+              </p>
+            ) : (
+              <p className={styles.cardLock}>{getUpgradeMessage('boodschappenlijst')}</p>
+            )}
             <ul className={styles.mealList}>
               {displayMeals.map((m, i) => (
                 <li key={i} className={styles.mealRow}>

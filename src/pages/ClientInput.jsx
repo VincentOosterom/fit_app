@@ -39,6 +39,37 @@ const SEX_OPTIONS = [
   { value: 'x', label: 'Anders' },
 ]
 
+const DIET_OPTIONS = [
+  { value: 'vegetarisch', label: 'Vegetarisch' },
+  { value: 'vegan', label: 'Vegan' },
+  { value: 'glutenvrij', label: 'Glutenvrij' },
+  { value: 'lactosevrij', label: 'Lactosevrij' },
+  { value: 'geen_noten', label: 'Geen noten' },
+  { value: 'halal', label: 'Halal' },
+  { value: 'geen_varken', label: 'Geen varken' },
+  { value: 'vis_gevogelte', label: 'Alleen vis/gevogelte' },
+]
+
+const DIET_VALUES = new Set(DIET_OPTIONS.map((o) => o.value))
+
+function parseDietaryPrefs(str) {
+  if (!str || !str.trim()) return { options: [], other: '' }
+  const parts = str.split(',').map((s) => s.trim()).filter(Boolean)
+  const options = []
+  const otherParts = []
+  for (const p of parts) {
+    if (DIET_VALUES.has(p)) options.push(p)
+    else otherParts.push(p)
+  }
+  return { options, other: otherParts.join(', ') }
+}
+
+function serializeDietaryPrefs(options, other) {
+  const list = [...options]
+  if (other.trim()) list.push(other.trim())
+  return list.join(', ') || ''
+}
+
 const defaultForm = {
   age: '',
   height_cm: '',
@@ -54,7 +85,8 @@ const defaultForm = {
   work_load: '',
   stress_level: '',
   nutrition_goal: 'onderhoud',
-  dietary_prefs: '',
+  dietaryOptions: [],
+  dietaryOther: '',
   restrictions: '',
   uses_supplements: false,
   supplements_notes: '',
@@ -83,6 +115,7 @@ export default function ClientInput() {
 
   useEffect(() => {
     if (input) {
+      const { options: dietaryOptions, other: dietaryOther } = parseDietaryPrefs(input.dietary_prefs ?? '')
       setForm({
         age: input.age ?? '',
         height_cm: input.height_cm ?? '',
@@ -98,7 +131,8 @@ export default function ClientInput() {
         work_load: input.work_load ?? '',
         stress_level: input.stress_level ?? '',
         nutrition_goal: input.nutrition_goal ?? 'onderhoud',
-        dietary_prefs: input.dietary_prefs ?? '',
+        dietaryOptions,
+        dietaryOther,
         restrictions: input.restrictions ?? '',
         uses_supplements: input.uses_supplements ?? false,
         supplements_notes: input.supplements_notes ?? '',
@@ -128,7 +162,7 @@ export default function ClientInput() {
         work_load: form.work_load || null,
         stress_level: form.stress_level || null,
         nutrition_goal: form.nutrition_goal,
-        dietary_prefs: form.dietary_prefs.trim() || null,
+        dietary_prefs: serializeDietaryPrefs(form.dietaryOptions, form.dietaryOther) || null,
         restrictions: form.restrictions.trim() || null,
         uses_supplements: form.uses_supplements,
         supplements_notes: form.supplements_notes.trim() || null,
@@ -159,6 +193,7 @@ export default function ClientInput() {
       {message && <p className={styles.success}>{message}</p>}
 
       <form onSubmit={handleSubmit} className={styles.form}>
+        <div className={styles.formGrid}>
         <section className={styles.section}>
           <h2>1. Basisgegevens</h2>
           <LabelWithTooltip label="Leeftijd" tip="Gebruikt voor inschatting herstel en belastbaarheid.">
@@ -348,18 +383,39 @@ export default function ClientInput() {
               ))}
             </select>
           </LabelWithTooltip>
-          <label>
-            Dieetvoorkeur of beperkingen
+          <div className={styles.dietSection}>
+            <span className={styles.dietLabel}>Dieetvoorkeur of beperkingen</span>
+            <div className={styles.dietOptions}>
+              {DIET_OPTIONS.map((opt) => (
+                <label key={opt.value} className={styles.check}>
+                  <input
+                    type="checkbox"
+                    checked={form.dietaryOptions.includes(opt.value)}
+                    onChange={(e) => {
+                      if (readOnly) return
+                      setForm((f) => ({
+                        ...f,
+                        dietaryOptions: e.target.checked
+                          ? [...f.dietaryOptions, opt.value]
+                          : f.dietaryOptions.filter((v) => v !== opt.value),
+                      }))
+                    }}
+                    disabled={readOnly}
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
             <input
               type="text"
-              value={form.dietary_prefs}
-              onChange={(e) => setForm((f) => ({ ...f, dietary_prefs: e.target.value }))}
-              placeholder="Optioneel, bijv. vegetarisch"
+              value={form.dietaryOther}
+              onChange={(e) => setForm((f) => ({ ...f, dietaryOther: e.target.value }))}
+              placeholder="Overige voorkeuren (optioneel)"
               className={styles.input}
               readOnly={readOnly}
               disabled={readOnly}
             />
-          </label>
+          </div>
           <label>
             Allergieën of overige restricties
             <textarea
@@ -418,6 +474,7 @@ export default function ClientInput() {
             Trainingsschema genereren
           </label>
         </section>
+        </div>
 
         {!readOnly && (
           <button type="submit" disabled={saving} className={styles.button}>

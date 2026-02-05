@@ -7,9 +7,12 @@ const SLOT_KEYS = ['ontbijt', 'lunch', 'avond', 'snack']
 export default function AdminMeals() {
   return (
     <div className={styles.page}>
-      <h1>Maaltijden</h1>
+      <h1>Maaltijden (food library)</h1>
       <p className={styles.intro}>
-        Overzicht van alle voorbeeldmaaltijden die klanten kunnen kiezen, per energieniveau en maaltijdtype. Op de weekpagina voeding kunnen zij &quot;Kies iets anders&quot; gebruiken om te wisselen tussen deze opties.
+        Dit overzicht komt direct uit de <strong>food library</strong> en is identiek aan wat klanten kunnen kiezen. Op de weekpagina voeding zien zij bij elk maaltijdtype precies deze opties voor het energieniveau van die week; met &quot;Kies iets anders&quot; wisselen zij binnen dezelfde lijst.
+      </p>
+      <p className={styles.introSub}>
+        Wijzigingen in <code>src/lib/foodLibrary.js</code> bepalen wat hier en bij de klant zichtbaar is.
       </p>
 
       {Object.entries(MEAL_EXAMPLES).map(([energyKey, slots]) => (

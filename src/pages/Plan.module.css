@@ -202,6 +202,27 @@
   color: var(--accent);
 }
 
+.shoppingBtn {
+  padding: 0.5rem 1rem;
+  background: var(--accent);
+  color: var(--accent-text);
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.shoppingBtn:hover {
+  background: var(--accent-hover);
+}
+
+.cardLock {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0.5rem 0 0;
+}
+
 .sessionList {
   list-style: none;
   padding-left: 0;

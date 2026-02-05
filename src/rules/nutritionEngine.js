@@ -1,7 +1,10 @@
 /**
  * TrainLogic: voedingsrichtlijn per week met voorbeeldmaaltijden, kcal en macro's.
  * Weekgemiddelden + wat je kunt eten (voorbeelddag per week).
+ * Maaltijden komen uit de food library (~50 opties).
  */
+
+import { getMealOptionsFromLibrary, FOOD_LIBRARY } from '../lib/foodLibrary'
 
 // Per week energie-richting
 function getWeeklyEnergyDirection(nutritionGoal) {
@@ -34,93 +37,38 @@ function caloriesToMacros(kcal, split) {
   }
 }
 
-// Voorbeeldmaaltijden per energieniveau (kcal + macro's per maaltijd)
-const MEAL_EXAMPLES = {
-  laag: {
-    ontbijt: [
-      { name: 'Havermout met banaan en noten', kcal: 320, protein: 10, carbs: 48, fat: 11 },
-      { name: 'Griekse yoghurt met muesli', kcal: 280, protein: 18, carbs: 32, fat: 8 },
-      { name: 'Eieren met volkorenbrood en avocado', kcal: 350, protein: 18, carbs: 28, fat: 18 },
-    ],
-    lunch: [
-      { name: 'Salade met kip, quinoa en groenten', kcal: 420, protein: 35, carbs: 38, fat: 14 },
-      { name: 'Volkoren wrap met hummus en groente', kcal: 380, protein: 14, carbs: 52, fat: 12 },
-      { name: 'Soep met bruin brood en kaas', kcal: 400, protein: 16, carbs: 48, fat: 14 },
-    ],
-    avond: [
-      { name: 'Zalm met zoete aardappel en broccoli', kcal: 520, protein: 38, carbs: 42, fat: 22 },
-      { name: 'Kipfilet met rijst en groenten', kcal: 480, protein: 42, carbs: 48, fat: 12 },
-      { name: 'Linzenstoof met volkorenrijst', kcal: 450, protein: 20, carbs: 68, fat: 10 },
-    ],
-    snack: [
-      { name: 'Kwark of fruit', kcal: 120, protein: 12, carbs: 12, fat: 2 },
-      { name: 'Noten of rijstwafel met pindakaas', kcal: 150, protein: 6, carbs: 10, fat: 11 },
-    ],
-  },
-  medium: {
-    ontbijt: [
-      { name: 'Havermout met banaan, noten en honing', kcal: 400, protein: 12, carbs: 58, fat: 14 },
-      { name: 'Griekse yoghurt met muesli en fruit', kcal: 360, protein: 22, carbs: 42, fat: 10 },
-      { name: 'Eieren met volkorenbrood, avocado en tomaat', kcal: 420, protein: 22, carbs: 34, fat: 22 },
-    ],
-    lunch: [
-      { name: 'Salade met kip, quinoa, noten en dressing', kcal: 520, protein: 40, carbs: 44, fat: 18 },
-      { name: 'Volkoren wrap met kip, hummus en groente', kcal: 480, protein: 32, carbs: 52, fat: 16 },
-      { name: 'Pasta met tonijn en groenten', kcal: 550, protein: 28, carbs: 62, fat: 20 },
-    ],
-    avond: [
-      { name: 'Zalm met zoete aardappel, broccoli en olie', kcal: 620, protein: 42, carbs: 48, fat: 28 },
-      { name: 'Kipfilet met aardappel en groenten', kcal: 560, protein: 48, carbs: 52, fat: 16 },
-      { name: 'Rundergehakt met rijst en salade', kcal: 580, protein: 38, carbs: 54, fat: 22 },
-    ],
-    snack: [
-      { name: 'Kwark met noten en fruit', kcal: 180, protein: 16, carbs: 18, fat: 6 },
-      { name: 'Smoothie met banaan en pindakaas', kcal: 220, protein: 8, carbs: 28, fat: 10 },
-    ],
-  },
-  hoog: {
-    ontbijt: [
-      { name: 'Havermout met banaan, noten, honing en pindakaas', kcal: 520, protein: 18, carbs: 62, fat: 22 },
-      { name: 'Griekse yoghurt met muesli, fruit en noten', kcal: 450, protein: 26, carbs: 50, fat: 16 },
-      { name: 'Eieren met volkorenbrood, avocado, kaas', kcal: 500, protein: 26, carbs: 38, fat: 26 },
-    ],
-    lunch: [
-      { name: 'Salade met kip, quinoa, noten, kaas en dressing', kcal: 620, protein: 46, carbs: 48, fat: 24 },
-      { name: 'Volkoren wrap met kip, hummus, avocado', kcal: 560, protein: 38, carbs: 52, fat: 22 },
-      { name: 'Pasta met tonijn, groenten en olie', kcal: 640, protein: 32, carbs: 68, fat: 26 },
-    ],
-    avond: [
-      { name: 'Zalm met zoete aardappel, broccoli, olie en noten', kcal: 720, protein: 44, carbs: 54, fat: 36 },
-      { name: 'Kipfilet met aardappel, groenten en saus', kcal: 660, protein: 52, carbs: 58, fat: 24 },
-      { name: 'Biefstuk met rijst, groenten en boter', kcal: 680, protein: 46, carbs: 56, fat: 28 },
-    ],
-    snack: [
-      { name: 'Kwark met noten, fruit en muesli', kcal: 260, protein: 20, carbs: 26, fat: 10 },
-      { name: 'Smoothie met banaan, pindakaas en melk', kcal: 320, protein: 14, carbs: 38, fat: 14 },
-    ],
-  },
+// Afgeleid van food library voor admin-overzicht (zelfde structuur als voorheen)
+function buildMealExamplesFromLibrary() {
+  const levels = ['laag', 'medium', 'hoog']
+  const result = {}
+  for (const level of levels) {
+    result[level] = {
+      ontbijt: FOOD_LIBRARY.ontbijt.filter((m) => m.energyLevel === level).map(({ name, kcal, protein, carbs, fat }) => ({ name, kcal, protein, carbs, fat })),
+      lunch: FOOD_LIBRARY.lunch.filter((m) => m.energyLevel === level).map(({ name, kcal, protein, carbs, fat }) => ({ name, kcal, protein, carbs, fat })),
+      avond: FOOD_LIBRARY.avond.filter((m) => m.energyLevel === level).map(({ name, kcal, protein, carbs, fat }) => ({ name, kcal, protein, carbs, fat })),
+      snack: FOOD_LIBRARY.snack.filter((m) => m.energyLevel === level).map(({ name, kcal, protein, carbs, fat }) => ({ name, kcal, protein, carbs, fat })),
+    }
+  }
+  return result
 }
+
+const MEAL_EXAMPLES = buildMealExamplesFromLibrary()
 
 const MEAL_SLOTS = ['ontbijt', 'lunch', 'avond', 'snack1', 'snack2']
 
-/** Geeft alle alternatieven voor een maaltijdslot (voor "kies iets anders"). */
+/** Geeft alle alternatieven voor een maaltijdslot (voor "kies iets anders") — uit food library. */
 export function getMealOptions(energyLevel, mealSlot) {
-  const meals = MEAL_EXAMPLES[energyLevel] || MEAL_EXAMPLES.medium
-  if (mealSlot === 'snack1' || mealSlot === 'snack2') {
-    return [...(meals.snack || [])]
-  }
-  const key = mealSlot === 'avond' ? 'avond' : mealSlot
-  return [...(meals[key] || [])]
+  return getMealOptionsFromLibrary(energyLevel, mealSlot)
 }
 
 function pickExampleDay(energyLevel) {
-  const meals = MEAL_EXAMPLES[energyLevel] || MEAL_EXAMPLES.medium
+  const snackOpts = getMealOptionsFromLibrary(energyLevel, 'snack1')
   return {
-    ontbijt: meals.ontbijt[0],
-    lunch: meals.lunch[0],
-    avond: meals.avond[0],
-    snack1: meals.snack[0],
-    snack2: meals.snack[1],
+    ontbijt: getMealOptionsFromLibrary(energyLevel, 'ontbijt')[0] || null,
+    lunch: getMealOptionsFromLibrary(energyLevel, 'lunch')[0] || null,
+    avond: getMealOptionsFromLibrary(energyLevel, 'avond')[0] || null,
+    snack1: snackOpts[0] || null,
+    snack2: snackOpts[1] || snackOpts[0] || null,
   }
 }
 
@@ -135,13 +83,14 @@ export function buildNutritionPlan(input) {
     const dailyKcal = getWeeklyCalories(input, direction)
     const macros = caloriesToMacros(dailyKcal, split)
     const exampleDay = pickExampleDay(direction)
-    const totalExample = [
+    const mealsForTotal = [
       exampleDay.ontbijt,
       exampleDay.lunch,
       exampleDay.avond,
       exampleDay.snack1,
       exampleDay.snack2,
-    ].reduce((acc, m) => ({ kcal: acc.kcal + m.kcal, protein: acc.protein + m.protein, carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat }), { kcal: 0, protein: 0, carbs: 0, fat: 0 })
+    ].filter(Boolean)
+    const totalExample = mealsForTotal.reduce((acc, m) => ({ kcal: acc.kcal + m.kcal, protein: acc.protein + m.protein, carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat }), { kcal: 0, protein: 0, carbs: 0, fat: 0 })
 
     const weekTip = direction === 'laag'
       ? 'Spreid je maaltijden; eet voldoende eiwit om spiermassa te behouden.'
@@ -157,12 +106,12 @@ export function buildNutritionPlan(input) {
       note: direction === 'laag' ? 'Weekgemiddelde. Geen dagrestrictie.' : null,
       weekTip,
       exampleMeals: [
-        { meal: 'Ontbijt', ...exampleDay.ontbijt },
-        { meal: 'Lunch', ...exampleDay.lunch },
-        { meal: 'Avondeten', ...exampleDay.avond },
-        { meal: 'Snack', ...exampleDay.snack1 },
-        { meal: 'Snack', ...exampleDay.snack2 },
-      ],
+        exampleDay.ontbijt && { meal: 'Ontbijt', ...exampleDay.ontbijt },
+        exampleDay.lunch && { meal: 'Lunch', ...exampleDay.lunch },
+        exampleDay.avond && { meal: 'Avondeten', ...exampleDay.avond },
+        exampleDay.snack1 && { meal: 'Snack', ...exampleDay.snack1 },
+        exampleDay.snack2 && { meal: 'Snack', ...exampleDay.snack2 },
+      ].filter(Boolean),
       exampleDayTotal: totalExample,
     })
   }
