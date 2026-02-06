@@ -75,6 +75,16 @@
   font-style: italic;
 }
 
+.extraMealInfo {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
 .intro {
   color: var(--muted);
   margin: 0 0 1rem;

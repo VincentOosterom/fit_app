@@ -4,6 +4,13 @@ import { useAuth } from '../context/AuthContext'
 import { isSupabaseConfigured } from '../lib/supabase'
 import styles from './Login.module.css'
 
+const REGISTER_USPS = [
+  'Voeding en training op maat — één plan dat bij je past',
+  'Persoonlijk 4-weekse schema op vaste, uitlegbare regels',
+  'Wekelijkse evaluatie: wij sturen bij op jouw feedback',
+  'Eerste maand gratis — daarna vanaf € 7,95/maand',
+]
+
 const NETWORK_ERROR_TIP = (
   <>
     <strong>Geen verbinding met Supabase.</strong> Probeer dit:
@@ -105,6 +112,7 @@ export default function Login() {
     setForgotEmailSent(false)
     setError('')
     setPassword('')
+    navigate(toSignUp ? '/login?register=1' : '/login', { replace: true })
   }
 
   if (!isSupabaseConfigured) {
@@ -215,73 +223,85 @@ export default function Login() {
           <p className={styles.error}>Dit account is geblokkeerd. Neem contact op met support.</p>
         )}
 
-        {isSignUp ? (
-          <>
-            <h1 className={styles.title}>Account aanmaken</h1>
-            <p className={styles.subtitle}>Registreer je voor TrainLogic en maak je eerste schema.</p>
-          </>
-        ) : (
-          <>
-            <h1 className={styles.title}>Welkom terug</h1>
-            <p className={styles.subtitle}>Log in om je schema&apos;s te beheren.</p>
-          </>
-        )}
+        <div className={styles.cardInner}>
+          <div key={isSignUp ? 'signup' : 'login'} className={styles.viewContent}>
+            {isSignUp ? (
+              <>
+                <h1 className={styles.title}>Account aanmaken</h1>
+                <p className={styles.subtitle}>Registreer je voor TrainLogic en maak je eerste schema.</p>
+                <div className={styles.usps}>
+                  <p className={styles.uspsTitle}>Waarom TrainLogic?</p>
+                  <ul className={styles.uspsList}>
+                    {REGISTER_USPS.map((usp, i) => (
+                      <li key={i}>{usp}</li>
+                    ))}
+                  </ul>
+                </div>
+              </>
+            ) : (
+              <>
+                <h1 className={styles.title}>Welkom terug</h1>
+                <p className={styles.subtitle}>Log in om je schema&apos;s te beheren.</p>
+              </>
+            )}
 
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <label>
-            E-mail
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              className={styles.input}
-              placeholder="jouw@email.nl"
-            />
-          </label>
-          <label>
-            Wachtwoord
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              autoComplete={isSignUp ? 'new-password' : 'current-password'}
-              className={styles.input}
-              placeholder={isSignUp ? 'Min. 6 tekens' : '••••••••'}
-            />
-          </label>
-          {!isSignUp && (
-            <p className={styles.forgotWrap}>
-              <button type="button" onClick={() => { setShowForgotPassword(true); setError(''); }} className={styles.forgotLink}>
-                Wachtwoord vergeten?
+            <form onSubmit={handleSubmit} className={styles.form}>
+              <label>
+                E-mail
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  className={styles.input}
+                  placeholder="jouw@email.nl"
+                />
+              </label>
+              <label>
+                Wachtwoord
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                  className={styles.input}
+                  placeholder={isSignUp ? 'Min. 6 tekens' : '••••••••'}
+                />
+              </label>
+              {!isSignUp && (
+                <p className={styles.forgotWrap}>
+                  <button type="button" onClick={() => { setShowForgotPassword(true); setError(''); }} className={styles.forgotLink}>
+                    Wachtwoord vergeten?
+                  </button>
+                </p>
+              )}
+              {error && <div className={styles.error}>{error}</div>}
+              <button type="submit" disabled={busy} className={styles.button}>
+                {busy ? 'Even geduld…' : isSignUp ? 'Account aanmaken' : 'Inloggen'}
               </button>
-            </p>
-          )}
-          {error && <div className={styles.error}>{error}</div>}
-          <button type="submit" disabled={busy} className={styles.button}>
-            {busy ? 'Even geduld…' : isSignUp ? 'Account aanmaken' : 'Inloggen'}
-          </button>
-        </form>
+            </form>
 
-        <div className={styles.switch}>
-          {isSignUp ? (
-            <>
-              <span>Al een account?</span>
-              <button type="button" onClick={() => switchMode(false)} className={styles.switchLink}>
-                Log in
-              </button>
-            </>
-          ) : (
-            <>
-              <span>Nog geen account?</span>
-              <button type="button" onClick={() => switchMode(true)} className={styles.switchLink}>
-                Registreren
-              </button>
-            </>
-          )}
+            <div className={styles.switch}>
+              {isSignUp ? (
+                <>
+                  <span>Al een account?</span>
+                  <button type="button" onClick={() => switchMode(false)} className={styles.switchLink}>
+                    Log in
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span>Nog geen account?</span>
+                  <button type="button" onClick={() => switchMode(true)} className={styles.switchLink}>
+                    Registreren
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

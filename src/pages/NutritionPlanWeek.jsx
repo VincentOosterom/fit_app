@@ -11,7 +11,7 @@ import { useFoodLibrary } from '../hooks/useFoodLibrary'
 import { getShoppingListForMeals } from '../lib/foodLibrary'
 import styles from './Plan.module.css'
 
-const MEAL_LABELS = { ontbijt: 'Ontbijt', lunch: 'Lunch', avond: 'Avondeten', snack1: 'Snack', snack2: 'Snack' }
+const MEAL_LABELS = { ontbijt: 'Ontbijt', lunch: 'Lunch', avond: 'Avondeten', snack1: 'Snack', snack2: 'Snack', snack3: 'Snack', snack4: 'Snack' }
 
 export default function NutritionPlanWeek() {
   const { id, weekNum } = useParams()
@@ -92,42 +92,59 @@ export default function NutritionPlanWeek() {
   const dayNumber = showSevenDays ? selectedDay : 1
   const overridesForDay = overridesByDay[dayNumber] ?? {}
 
-  const handleSwapMeal = async (mealSlot) => {
+  const handleSwapMeal = async (mealSlot, forDayNumber = dayNumber) => {
     if (!user?.id || !id || !week) return
     const options = getMealOptions(week.energyDirection, mealSlot)
     if (options.length <= 1) return
-    const current = overridesForDay[mealSlot] ?? 0
+    const dayOverrides = overridesByDay[forDayNumber] ?? {}
+    const current = dayOverrides[mealSlot] ?? 0
     const next = (current + 1) % options.length
     const { error } = await supabase.from('meal_overrides').upsert(
-      { user_id: user.id, nutrition_plan_id: id, week_number: weekNumber, day_number: dayNumber, meal_slot: mealSlot, option_index: next },
+      { user_id: user.id, nutrition_plan_id: id, week_number: weekNumber, day_number: forDayNumber, meal_slot: mealSlot, option_index: next },
       { onConflict: 'user_id,nutrition_plan_id,week_number,day_number,meal_slot' }
     )
-    if (!error) setOverridesByDay((o) => ({ ...o, [dayNumber]: { ...(o[dayNumber] ?? {}), [mealSlot]: next } }))
+    if (!error) setOverridesByDay((o) => ({ ...o, [forDayNumber]: { ...(o[forDayNumber] ?? {}), [mealSlot]: next } }))
   }
 
   if (loading) return <p className={styles.muted}>Laden…</p>
   if (!row || !plan) return <p className={styles.muted}>Schema niet gevonden.</p>
 
   const weekDays = showSevenDays && week?.days?.length ? week.days : null
-  const activeDayData = weekDays ? weekDays[dayNumber - 1] : null
-  const baseMealsForDay = activeDayData?.meals ?? week?.exampleMeals ?? []
 
-  const displayMeals = week ? MEAL_SLOTS.map((slot, i) => {
-    const baseMeal = baseMealsForDay[i]
-    const options = getMealOptions(week.energyDirection, slot)
-    const idx = overridesForDay[slot] ?? 0
-    const libMeal = options[idx] || options[0]
-    if (!libMeal && !baseMeal) return null
-    const m = libMeal || baseMeal
-    const targetKcal = baseMeal?.kcal ?? m.kcal
-    const scale = targetKcal && m.kcal ? targetKcal / m.kcal : 1
-    const scaled = scale !== 1 ? { ...m, kcal: Math.round(m.kcal * scale), protein: Math.round((m.protein || 0) * scale), carbs: Math.round((m.carbs || 0) * scale), fat: Math.round((m.fat || 0) * scale) } : m
-    return { slot, meal: MEAL_LABELS[slot], ...scaled, optionsCount: options.length }
-  }).filter(Boolean) : []
+  const buildDisplayMealsForDay = (forDayNumber) => {
+    if (!week) return []
+    const dayData = weekDays ? weekDays[forDayNumber - 1] : null
+    const planMeals = dayData?.meals ?? week?.exampleMeals ?? []
+    const overrides = overridesByDay[forDayNumber] ?? {}
 
-  const displayTotal = displayMeals.length
-    ? displayMeals.reduce((acc, m) => ({ kcal: acc.kcal + m.kcal, protein: acc.protein + m.protein, carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat }), { kcal: 0, protein: 0, carbs: 0, fat: 0 })
-    : (activeDayData?.dayTotal ?? week?.exampleDayTotal)
+    return planMeals.map((planMeal, i) => {
+      const slot = planMeal.slot || MEAL_SLOTS[i]
+      const librarySlot = (slot === 'snack3' || slot === 'snack4') ? 'snack1' : slot
+      const options = getMealOptions(week.energyDirection, librarySlot)
+      const overrideIdx = overrides[slot]
+      const m = (overrideIdx != null && options[overrideIdx]) ? options[overrideIdx] : planMeal
+      const mealLabel = MEAL_LABELS[slot] || 'Snack'
+      return {
+        slot,
+        meal: mealLabel,
+        name: m.name,
+        kcal: m.kcal,
+        protein: m.protein ?? 0,
+        carbs: m.carbs ?? 0,
+        fat: m.fat ?? 0,
+        grams: m.grams ?? null,
+        optionsCount: options.length,
+      }
+    }).filter((m) => m.name)
+  }
+
+  const buildTotals = (meals) => meals.reduce(
+    (acc, m) => ({ kcal: acc.kcal + (m.kcal || 0), protein: acc.protein + (m.protein || 0), carbs: acc.carbs + (m.carbs || 0), fat: acc.fat + (m.fat || 0) }),
+    { kcal: 0, protein: 0, carbs: 0, fat: 0 }
+  )
+
+  const displayMeals = buildDisplayMealsForDay(dayNumber)
+  const displayTotal = displayMeals.length ? buildTotals(displayMeals) : (weekDays ? weekDays[dayNumber - 1]?.dayTotal : week?.exampleDayTotal)
 
   const handleDownloadBoodschappen = () => {
     const list = getShoppingListForMeals(displayMeals)
@@ -135,7 +152,7 @@ export default function NutritionPlanWeek() {
       `Boodschappenlijst – Week ${weekNumber}`,
       'Precies wat je nodig hebt voor deze voorbeelddag.',
       '',
-      ...displayMeals.map((m) => `• ${m.meal}: ${m.name}`),
+      ...displayMeals.map((m) => `• ${m.meal}: ${m.name}${m.grams ? ` (${m.grams})` : ''}`),
       '',
       'Ingrediënten:',
       ...list.map((i) => `• ${i}`),
@@ -182,17 +199,8 @@ export default function NutritionPlanWeek() {
           </div>
 
           <div className={styles.day}>
-            {showSevenDays && weekDays ? (
-              <div className={styles.dayTabs} role="tablist" aria-label="Kies een dag">
-                {[1, 2, 3, 4, 5, 6, 7].map((d) => (
-                  <button key={d} type="button" role="tab" aria-selected={selectedDay === d} className={selectedDay === d ? styles.dayTabActive : styles.dayTab} onClick={() => setSelectedDay(d)}>
-                    Dag {d}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            <h3>{showSevenDays && weekDays ? `Dag ${selectedDay}` : 'Wat je kunt eten (voorbeelddag)'}</h3>
             <p className={styles.calories}>Vind je iets niet lekker? Klik op &quot;Kies iets anders&quot; voor een vergelijkbaar alternatief.</p>
+
             {canBoodschappen ? (
               <p className={styles.calories}>
                 <button type="button" className={styles.shoppingBtn} onClick={handleDownloadBoodschappen}>
@@ -202,22 +210,61 @@ export default function NutritionPlanWeek() {
             ) : (
               <p className={styles.cardLock}>{getUpgradeMessage('boodschappenlijst')}</p>
             )}
-            <ul className={styles.mealList}>
-              {displayMeals.map((m, i) => (
-                <li key={i} className={styles.mealRow}>
-                  <span>
-                    <strong>{m.meal}:</strong> {m.name} · {m.kcal} kcal · E{m.protein}g K{m.carbs}g V{m.fat}g
-                  </span>
-                  {m.optionsCount > 1 && (
-                    <button type="button" className={styles.swapBtn} onClick={() => handleSwapMeal(m.slot)}>
-                      Dit vind ik niet lekker — kies iets anders
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-            {displayTotal && (
-              <p className={styles.calories}>Totaal {showSevenDays ? `dag ${selectedDay}` : 'voorbeeld'}: {displayTotal.kcal} kcal · E{displayTotal.protein}g K{displayTotal.carbs}g V{displayTotal.fat}g</p>
+
+            {showSevenDays && weekDays ? (
+              <div>
+                {[1, 2, 3, 4, 5, 6, 7].map((d) => {
+                  const dayData = weekDays[d - 1]
+                  const meals = buildDisplayMealsForDay(d)
+                  const total = meals.length ? buildTotals(meals) : null
+                  const extraMealAdded = dayData?.extraMealAdded
+                  return (
+                    <details key={d} open={d === selectedDay} onToggle={(e) => { if (e.currentTarget.open) setSelectedDay(d) }}>
+                      <summary><strong>Dag {d}</strong>{total ? ` — ${total.kcal} kcal (E${total.protein} K${total.carbs} V${total.fat})` : ''}</summary>
+                      {extraMealAdded && (
+                        <p className={styles.extraMealInfo}>
+                          We hebben een extra maaltijd toegevoegd zodat je dagtotaal beter aansluit op het weekgemiddelde ({week.averageCaloriesPerDay ?? '—'} kcal/dag).
+                        </p>
+                      )}
+                      <ul className={styles.mealList} style={{ marginTop: '0.75rem' }}>
+                        {meals.map((m, i) => (
+                          <li key={i} className={styles.mealRow}>
+                            <span>
+                              <strong>{m.meal}:</strong> {m.name}{m.grams ? ` — ${m.grams}` : ''} · {m.kcal} kcal · E{m.protein}g K{m.carbs}g V{m.fat}g
+                            </span>
+                            {m.optionsCount > 1 && (
+                              <button type="button" className={styles.swapBtn} onClick={() => handleSwapMeal(m.slot, d)}>
+                                Dit vind ik niet lekker — kies iets anders
+                              </button>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )
+                })}
+              </div>
+            ) : (
+              <>
+                <h3>Wat je kunt eten (voorbeelddag)</h3>
+                <ul className={styles.mealList}>
+                  {displayMeals.map((m, i) => (
+                    <li key={i} className={styles.mealRow}>
+                      <span>
+                        <strong>{m.meal}:</strong> {m.name}{m.grams ? ` — ${m.grams}` : ''} · {m.kcal} kcal · E{m.protein}g K{m.carbs}g V{m.fat}g
+                      </span>
+                      {m.optionsCount > 1 && (
+                        <button type="button" className={styles.swapBtn} onClick={() => handleSwapMeal(m.slot, 1)}>
+                          Dit vind ik niet lekker — kies iets anders
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {displayTotal && (
+                  <p className={styles.calories}>Totaal voorbeeld: {displayTotal.kcal} kcal · E{displayTotal.protein}g K{displayTotal.carbs}g V{displayTotal.fat}g</p>
+                )}
+              </>
             )}
           </div>
         </>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useParams, Navigate } from 'react-router-dom'
+import { Link, useParams, useSearchParams, Navigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useProfile } from '../../hooks/useProfile'
@@ -19,12 +19,23 @@ const TABS = [
 
 export default function CoachClientDetail() {
   const { clientId } = useParams()
+  const [searchParams] = useSearchParams()
+  const tabFromUrl = searchParams.get('tab')
   const { user } = useAuth()
   const { isCoach, clients } = useProfile()
   const client = (clients ?? []).find((c) => c.id === clientId)
   const { input, loading: inputLoading } = useClientInputFor(clientId)
 
-  const [activeTab, setActiveTab] = useState('intake')
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = tabFromUrl || 'intake'
+    return TABS.some((tab) => tab.id === t) ? t : 'intake'
+  })
+
+  useEffect(() => {
+    if (tabFromUrl && TABS.some((tab) => tab.id === tabFromUrl)) {
+      setActiveTab(tabFromUrl)
+    }
+  }, [tabFromUrl])
   const [nutritionPlans, setNutritionPlans] = useState([])
   const [trainingPlans, setTrainingPlans] = useState([])
   const [plansLoading, setPlansLoading] = useState(true)
@@ -36,6 +47,7 @@ export default function CoachClientDetail() {
   const [savingNote, setSavingNote] = useState(false)
   const [messages, setMessages] = useState([])
   const [messagesLoading, setMessagesLoading] = useState(false)
+  const [clientNotifications, setClientNotifications] = useState([])
   const [newMessage, setNewMessage] = useState('')
   const [sendingMessage, setSendingMessage] = useState(false)
   const [weekReviews, setWeekReviews] = useState([])
@@ -68,9 +80,15 @@ export default function CoachClientDetail() {
   useEffect(() => {
     if (activeTab !== 'communication' || !clientId) return
     setMessagesLoading(true)
-    supabase.from('coach_messages').select('*').eq('client_id', clientId).order('created_at', { ascending: false })
-      .then(({ data }) => { setMessages(data ?? []); setMessagesLoading(false) })
-  }, [activeTab, clientId])
+    Promise.all([
+      supabase.from('coach_messages').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
+      supabase.from('client_notifications').select('*').eq('client_id', clientId).eq('coach_id', user?.id).order('created_at', { ascending: false }),
+    ]).then(([msgRes, notifRes]) => {
+      setMessages(msgRes.data ?? [])
+      setClientNotifications(notifRes.data ?? [])
+      setMessagesLoading(false)
+    })
+  }, [activeTab, clientId, user?.id])
 
   useEffect(() => {
     if (activeTab !== 'progress' || !clientId) return
@@ -142,6 +160,11 @@ export default function CoachClientDetail() {
       if (error) throw error
       setMessages((prev) => [data, ...prev])
       setNewMessage('')
+      const newestNew = clientNotifications.find((n) => n.status === 'nieuw')
+      if (newestNew) {
+        await supabase.from('client_notifications').update({ status: 'opgevolgd', replied_at: new Date().toISOString() }).eq('id', newestNew.id)
+        setClientNotifications((prev) => prev.map((n) => (n.id === newestNew.id ? { ...n, status: 'opgevolgd', replied_at: new Date().toISOString() } : n)))
+      }
     } finally {
       setSendingMessage(false)
     }
@@ -285,6 +308,22 @@ export default function CoachClientDetail() {
       {activeTab === 'communication' && (
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Communicatie</h2>
+          {clientNotifications.length > 0 && (
+            <>
+              <h3 className={styles.sectionTitle} style={{ fontSize: '1rem', marginTop: '1rem' }}>Meldingen van klant</h3>
+              <ul className={styles.notesList}>
+                {clientNotifications.map((n) => (
+                  <li key={n.id} className={`${styles.noteItem} ${n.status === 'nieuw' ? styles.alertItemNew : ''}`}>
+                    <span className={styles.muted}>[{n.type}]</span> {n.body}
+                    <div className={styles.noteItemMeta}>
+                      {new Date(n.created_at).toLocaleString('nl-NL')} · Status: {n.status}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <h3 className={styles.sectionTitle} style={{ fontSize: '1rem', marginTop: '1rem' }}>Bericht naar klant</h3>
           <form onSubmit={handleSendMessage}>
             <div className={styles.formRow}>
               <textarea value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Bericht naar klant…" rows={3} style={{ maxWidth: '100%' }} disabled={sendingMessage} />
@@ -296,7 +335,7 @@ export default function CoachClientDetail() {
               {messages.map((m) => (
                 <li key={m.id} className={styles.msgItem}>
                   <div>{m.body}</div>
-                  <div className={styles.msgItemMeta}>{new Date(m.created_at).toLocaleString('nl-NL')} {m.read_at ? '· Gelezen' : ''}</div>
+                  <div className={styles.msgItemMeta}>{new Date(m.created_at).toLocaleString('nl-NL')}</div>
                 </li>
               ))}
             </ul>

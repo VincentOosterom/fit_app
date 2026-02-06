@@ -14,6 +14,8 @@ import { getWelcomeByTime } from '../lib/welcomeTexts'
 import { MOTIVATION_QUOTES } from '../lib/motivationQuotes'
 import { getCurrentWeek } from '../utils/weekEvaluation'
 import ThankYouModal from '../components/ThankYouModal'
+import { CoachBlock } from '../components/CoachBlock'
+import NotificationsCenter from '../components/NotificationsCenter'
 import styles from './Dashboard.module.css'
 
 function formatDate(iso) {
@@ -78,16 +80,27 @@ function QuoteCarousel() {
   )
 }
 
+const HOW_WENT_SCORE = { goed: 100, redelijk: 50, slecht: 0 }
 function ProgressBlock({ planCreatedAt, blockReviews }) {
   const currentWeek = getCurrentWeek(planCreatedAt)
   const reviewedWeeks = (blockReviews || []).map((r) => r.week_number)
   const count = reviewedWeeks.length
   const pct = Math.round((count / 4) * 100)
+  const adherenceScores = (blockReviews || []).map((r) => HOW_WENT_SCORE[r.how_went] ?? 0).filter((x) => x !== undefined)
+  const adherence = adherenceScores.length ? Math.round(adherenceScores.reduce((a, b) => a + b, 0) / adherenceScores.length) : null
+  const sorted = [...(blockReviews || [])].sort((a, b) => a.week_number - b.week_number)
+  let streak = 0
+  for (let i = 0; i < sorted.length; i++) {
+    if (sorted[i].week_number === streak + 1) streak++
+    else break
+  }
   return (
     <section className={styles.progressBlock}>
       <h2 className={styles.progressTitle}>Je voortgang</h2>
       <p className={styles.progressSubtitle}>
         Week {currentWeek ?? 1} van 4 · {count} van 4 weekevaluaties ingevuld
+        {adherence != null && ` · Adherence: ${adherence}%`}
+        {streak > 0 && ` · Streak: ${streak} week${streak === 1 ? '' : 'en'}`}
       </p>
       <div className={styles.progressBarWrap}>
         <div className={styles.progressBar} style={{ width: `${pct}%` }} />
@@ -107,7 +120,7 @@ function ProgressBlock({ planCreatedAt, blockReviews }) {
 
 export default function Dashboard() {
   const { user } = useAuth()
-  const { isAdmin, profile } = useProfile()
+  const { isAdmin, profile, coachId } = useProfile()
   const { input, loading: inputLoading, error } = useClientInput()
   const { trainingPlan, nutritionPlan, hasAnyPlan, loading: plansLoading, showGenerate, canGenerateAgain, refetch, blockReviews, blockId, onlyNutrition, onlyTraining } = usePlans()
   const { planType, planName, amountFormatted, nextBillingDate, loading: subLoading, restartCount, refetch: refetchSub } = useSubscription()
@@ -193,6 +206,9 @@ export default function Dashboard() {
         </h1>
         <p className={styles.welcomeFollowUp}>{followUp}</p>
       </section>
+
+      {coachId && <CoachBlock />}
+      {coachId && <NotificationsCenter />}
 
       {nextEvent && canUseEvents && (
         <EventBanner event={nextEvent} blockReviews={blockReviews} />
