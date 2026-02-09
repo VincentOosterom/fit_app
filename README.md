@@ -1,4 +1,4 @@
-# Sport webapp – Voeding & Training
+# Sport webapp – Voeding & Training | Eigen probeer app. kijken wat luks
 
 React-frontend + Supabase. Op basis van **klantinput** en **regels** worden automatisch een voedings- en/of trainingsschema gegenereerd.
 
